@@ -46,9 +46,8 @@ jobs:
             exit 1
           fi
 
-      - name: Pubblica APK Beta nelle Releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepara Tag e File APK Beta
+        id: prep
         run: |
           BUILD_DATE=$(TZ='Europe/Rome' date +'%Y-%m-%d')
           UPSTREAM_FULL_SHA=$(git ls-remote https://github.com/timmyy123/LLM-Hub.git HEAD | awk '{print $1}')
@@ -59,10 +58,20 @@ jobs:
           BETA_APK="LLM-Hub-${RELEASE_TAG}.apk"
           cp "$ORIG_APK" "$BETA_APK"
 
-          gh release create "$RELEASE_TAG" "$BETA_APK" \
-            --repo "${{ github.repository }}" \
-            --title "LLM-Hub beta - ${BUILD_DATE} (${UPSTREAM_SHORT_SHA})" \
-            --notes "Build beta compilata dal sorgente con DEBUG_PREMIUM attivo.
-          Commit progetto originale: https://github.com/timmyy123/LLM-Hub/commit/${UPSTREAM_FULL_SHA}" \
-            --prerelease \
-            --clobber
+          echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "apk_path=$BETA_APK" >> $GITHUB_OUTPUT
+          echo "sha_full=$UPSTREAM_FULL_SHA" >> $GITHUB_OUTPUT
+          echo "sha_short=$UPSTREAM_SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+
+      - name: Pubblica Release Beta su GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.prep.outputs.tag }}
+          name: "LLM-Hub beta - ${{ steps.prep.outputs.build_date }} (${{ steps.prep.outputs.sha_short }})"
+          files: ${{ steps.prep.outputs.apk_path }}
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            Build beta compilata dal sorgente con DEBUG_PREMIUM attivo.
+            Commit progetto originale: https://github.com/timmyy123/LLM-Hub/commit/${{ steps.prep.outputs.sha_full }}
