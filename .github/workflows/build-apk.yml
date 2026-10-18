@@ -29,10 +29,12 @@ jobs:
       - name: Compila APK Debug
         run: |
           if [ -f "gradlew" ]; then
+            echo "DEBUG_PREMIUM=true" >> local.properties
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
           elif [ -f "android/gradlew" ]; then
             cd android
+            echo "DEBUG_PREMIUM=true" >> local.properties
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
           else
@@ -40,6 +42,7 @@ jobs:
             ls -la
             exit 1
           fi
+
 
       - name: Carica APK compilato
         uses: actions/upload-artifact@v4
