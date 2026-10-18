@@ -1,9 +1,12 @@
-name: Build Android APK
+name: Build & Release Beta APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ "main", "master" ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -26,7 +29,7 @@ jobs:
       - name: Accetta licenze Android SDK preinstallato
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Compila APK Debug
+      - name: Compila APK Debug con funzioni Premium
         run: |
           if [ -f "gradlew" ]; then
             echo "DEBUG_PREMIUM=true" >> local.properties
@@ -43,9 +46,23 @@ jobs:
             exit 1
           fi
 
+      - name: Pubblica APK Beta nelle Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BUILD_DATE=$(TZ='Europe/Rome' date +'%Y-%m-%d')
+          UPSTREAM_FULL_SHA=$(git ls-remote https://github.com/timmyy123/LLM-Hub.git HEAD | awk '{print $1}')
+          UPSTREAM_SHORT_SHA=$(echo "$UPSTREAM_FULL_SHA" | cut -c1-7)
 
-      - name: Carica APK compilato
-        uses: actions/upload-artifact@v4
-        with:
-          name: LLM-Hub-debug-apk
-          path: "**/*.apk"
+          RELEASE_TAG="beta-${BUILD_DATE}-${UPSTREAM_SHORT_SHA}"
+          ORIG_APK=$(find . -type f -name "*.apk" | head -n 1)
+          BETA_APK="LLM-Hub-${RELEASE_TAG}.apk"
+          cp "$ORIG_APK" "$BETA_APK"
+
+          gh release create "$RELEASE_TAG" "$BETA_APK" \
+            --repo "${{ github.repository }}" \
+            --title "LLM-Hub beta - ${BUILD_DATE} (${UPSTREAM_SHORT_SHA})" \
+            --notes "Build beta compilata dal sorgente con DEBUG_PREMIUM attivo.
+          Commit progetto originale: https://github.com/timmyy123/LLM-Hub/commit/${UPSTREAM_FULL_SHA}" \
+            --prerelease \
+            --clobber
