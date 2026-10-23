@@ -442,7 +442,7 @@
     <string name="please_fix_errors">Please fix the errors above</string>
     <string name="remove">Remove</string>
     <string name="ready_to_use">Ready to use</string>
-    <string name="unsupported_file_format">Unsupported file format. Please select a .task, .litertlm, or .zip file.</string>
+    <string name="unsupported_file_format">Unsupported file format.</string>
     <string name="download_models_from_litert_community">You can download compatible LLM models from:</string>
     <string name="litert_community_link">LiteRT Community on Hugging Face</string>
     <string name="download_image_models_from">You can download compatible image models from:</string>
@@ -655,6 +655,7 @@
     <string name="image_generator_download_model_desc">Download Absolute Reality (NPU or CPU) model from the Models screen to start creating images</string>
     <string name="image_generator_model_not_available">Image generation model not available</string>
     <string name="image_generator_error">Failed to generate image</string>
+    <string name="image_generator_npu_crashed">This device\'s NPU stopped while generating. Try again after a system update, or use another model.</string>
     <string name="image_generation_models">Image Generation Models</string>
     <string name="image_generation_models_description">Stable Diffusion models for text-to-image generation</string>
     <string name="image_generator_success">Image generated successfully</string>
@@ -1042,6 +1043,7 @@
     <string name="media_search_download_model_desc">This feature runs EmbeddingGemma 2 on your device. Download it from the model list to get started.</string>
     <string name="media_search_loading_model">Loading EmbeddingGemma 2…</string>
     <string name="media_search_model_failed">Couldn\'t load EmbeddingGemma 2</string>
+    <string name="media_search_npu_unavailable">This device\'s NPU can\'t run this model. Download the standard EmbeddingGemma 2 instead.</string>
     <string name="media_search_analyzing">Analyzing…</string>
     <string name="media_search_paused">Analysis paused</string>
     <string name="media_search_progress">%1$d of %2$d analyzed (%3$d%%)</string>
@@ -1139,7 +1141,7 @@
     <string name="video_generator_prompt_label">Video Description</string>
     <string name="video_generator_prompt_hint">Describe the scene and the motion you want to see...</string>
     <string name="video_generator_prompt_tip">Tip: detailed prompts work best. Describe the subject, the action, the camera movement, the lighting and the style in 2–4 sentences.</string>
-    <string name="video_generator_image_to_video">Image to video</string>
+    <string name="video_generator_image_to_video">Image-to-Video</string>
     <string name="video_generator_image_to_video_desc">Animate a start image instead of generating from text alone</string>
     <string name="video_generator_select_image">Select Start Image</string>
     <string name="video_generator_change_image">Change Start Image</string>
@@ -1175,4 +1177,23 @@
     <string name="video_generator_random_seed">Random seed</string>
     <string name="video_generator_negative_prompt">Negative prompt (optional)</string>
     <string name="video_generator_negative_prompt_hint">Things to avoid, e.g. blurry, distorted, low quality</string>
+
+    <!-- Image generation modifiers -->
+    <string name="image_extras_title">Image modifiers</string>
+    <string name="image_extras_add">Add modifier</string>
+    <string name="image_extras_negative">Negative prompt</string>
+    <string name="image_extras_guidance">Guidance scale</string>
+    <string name="image_extras_clip_skip">CLIP skip</string>
+    <string name="image_extras_weight">Weight</string>
+    <string name="image_extras_text_encoder">Text encoder</string>
+    <string name="image_extras_embedding">Textual inversion</string>
+    <string name="image_extras_tags">Tag list</string>
+    <string name="image_extras_definitions">Definitions</string>
+    <string name="image_extras_translations">Translation list</string>
+    <string name="image_extras_checkpoint">Base checkpoint</string>
+    <string name="image_extras_invalid">The selected file is invalid or incompatible with the model.</string>
+    <string name="image_extras_resource_hint">Tags: one per line or a JSON array. Definitions/translations: a JSON object or key=value. Tap tags/definitions; translations apply locally.</string>
+    <string name="image_extras_ios_help">LoRA: SafeTensors or Draw Things .ckpt. Encoders/VAE: compatible Draw Things .ckpt. Embeddings: SafeTensors. Select the matching model first.</string>
+    <string name="image_extras_android_help">Supported files: SafeTensors, GGUF, CKPT, PT, PTH, BIN. LoRA, CLIP skip and encoders only work with an imported checkpoint, not the built-in NPU/CPU models.</string>
+    <string name="image_extras_import_location">Import checkpoints, LoRAs, encoders and prompt lists in %1$s → %2$s.</string>
 </resources>

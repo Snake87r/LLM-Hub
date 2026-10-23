@@ -1,5 +1,6 @@
 // JNI bridge for LTX-Video generation through stable-diffusion.cpp (Vulkan / CPU ggml backends).
 #include <android/log.h>
+#include <android/set_abort_message.h>
 #include <jni.h>
 #include <sys/system_properties.h>
 
@@ -10,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "ggml.h"
 #include "stable-diffusion.h"
 
 #define LOG_TAG "SdCppJni"
@@ -161,6 +163,11 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
     g_vm = vm;
     apply_debug_ggml_env();
     sd_set_log_callback(on_sd_log, nullptr);
+    // ggml prints abort reasons to stderr, which Android discards; keep them in logcat and tombstones.
+    ggml_set_abort_callback([](const char* message) {
+        __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, "ggml abort: %s", message);
+        android_set_abort_message(message);
+    });
     sd_set_progress_callback(on_sd_progress, nullptr);
     return JNI_VERSION_1_6;
 }
@@ -318,8 +325,13 @@ Java_com_llmhub_llmhub_videogen_SdCppNative_nativeGenerate(JNIEnv* env,
                              3,
                              init_pixels.data()};
     }
-    // Decode the video in short temporal tiles so the VAE activations fit in phone memory.
-    params.vae_tiling_params.enabled = true;
+    // Decode the video in short temporal tiles so the VAE activations fit in phone memory. Spatial
+    // tiles alone still decode all frames at once, which got the app killed by the low-memory killer
+    // at "Decoding frames" on CPU (e.g. Snapdragon 7s Gen 4); sd.cpp only adds temporal tiles after a
+    // failed allocation, and Android kills the process before an allocation fails. The NPU decoder
+    // ignores these settings (one compiled graph for the whole clip).
+    params.vae_tiling_params.enabled         = true;
+    params.vae_tiling_params.temporal_tiling = true;
 
     g_expected_steps = sigma_values.empty() ? steps : static_cast<int>(sigma_values.size()) - 1;
     emit_stage(STAGE_ENCODING_PROMPT);

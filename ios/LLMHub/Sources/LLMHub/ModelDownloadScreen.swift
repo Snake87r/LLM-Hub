@@ -769,6 +769,8 @@ struct ModelRowView: View {
                 .contentShape(Rectangle()) // Makes the whole area clickable
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("model_row_\(model.name)")
+            .automationValue(state.automationValue)
 
             // Download progress
             if case .downloading(let progress, let downloaded, let speed) = state {
@@ -874,6 +876,7 @@ struct ModelRowView: View {
                                     .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
+                            .accessibilityIdentifier("model_download_\(model.name)")
                         case .error:
                             Button(action: onDownload) {
                                 Label(settings.localized("retry"), systemImage: "arrow.clockwise")
@@ -883,6 +886,7 @@ struct ModelRowView: View {
                                     .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
+                            .accessibilityIdentifier("model_download_\(model.name)")
                         case .downloading:
                             Button(action: onPause) {
                                 Label(settings.localized("pause_download"), systemImage: "pause.circle.fill")
@@ -909,6 +913,7 @@ struct ModelRowView: View {
                                     .foregroundColor(.white)
                                     .clipShape(RoundedRectangle(cornerRadius: 10))
                             }
+                            .accessibilityIdentifier("model_download_\(model.name)")
                             Button(action: onDelete) {
                                 Image(systemName: "trash")
                                     .padding(.vertical, 10)
@@ -1010,6 +1015,7 @@ struct ModelDownloadScreen: View {
             Image(systemName: "arrow.left")
                 .font(.headline)
         }
+        .accessibilityIdentifier("nav_back_button")
     }
 
     private var importButton: some View {
@@ -1051,6 +1057,7 @@ struct ModelDownloadScreen: View {
                                     vm.selectedCategory = cat
                                 }
                             }
+                            .accessibilityIdentifier("model_category_\(cat.titleKey)")
                         }
                     }
                     .padding(.horizontal, 16)
@@ -1111,6 +1118,7 @@ struct ModelDownloadScreen: View {
                                         )
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityIdentifier("model_family_\(family.title)")
 
                                     if vm.expandedFamilyTitle == family.title {
                                         ForEach(family.models) { model in
@@ -1374,6 +1382,10 @@ struct ImportExternalModelSheet: View {
     @State private var promptTemplate = ""
     @State private var modelFormat: ModelFormat = .gguf
     @State private var importKind: ModelImportKind = .gguf
+    // Image tab: nil imports a Draw Things model; otherwise a LoRA, encoder or prompt file for an installed model.
+    @State private var imageAddonKind: ImageExtra.Kind?
+    @State private var imageAddonModelID = ""
+    @State private var showAddonPicker = false
     @State private var drawThingsQuery = ""
     @State private var drawThingsModels: [DrawThingsCatalogEntry] = []
     @State private var selectedDrawThingsModel: DrawThingsCatalogEntry?
@@ -1405,6 +1417,7 @@ struct ImportExternalModelSheet: View {
         .pickerStyle(.segmented)
         .disabled(isImporting)
         .onChange(of: importKind) { _, kind in
+            imageAddonKind = nil
             if kind == .gguf { modelFormat = .gguf }
             if kind == .liteRT { modelFormat = .litertlm }
             selectedDrawThingsModel = nil
@@ -1421,7 +1434,11 @@ struct ImportExternalModelSheet: View {
             selectedHuggingFaceProjector = nil
         }
 
-        if importKind.isMedia {
+        // Image imports are full models only; add-ons (LoRA, encoders, prompt lists) are added in
+        // Image Generator's Image modifiers, attached to the model they modify.
+        if importKind == .image, let addonKind = imageAddonKind {
+            imageAddonFields(addonKind)
+        } else if importKind.isMedia {
             DrawThingsSearchPanel(
                 query: $drawThingsQuery,
                 selectedModel: $selectedDrawThingsModel,
@@ -1448,24 +1465,8 @@ struct ImportExternalModelSheet: View {
 
             // File import remains available alongside Hugging Face search.
             importField(label: modelFormat == .gguf ? "GGUF File" : "LiteRT-LM File") {
-                Button { showFilePicker = true } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text(selectedFileName.isEmpty ? settings.localized("select_model_file") : selectedFileName)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundColor(selectedFileName.isEmpty ? .white.opacity(0.5) : .white)
-                        Spacer()
-                        if !selectedFileName.isEmpty {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
+                Button { showFilePicker = true } label: { selectedFileRow }
+                    .buttonStyle(.plain)
             }
             .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [UTType.data], allowsMultipleSelection: false) { result in
                 handleFileSelected(result: result)
@@ -1650,6 +1651,87 @@ struct ImportExternalModelSheet: View {
         }
     }
 
+    private var selectedFileRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "doc.badge.plus")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+            Text(selectedFileName.isEmpty ? settings.localized("select_model_file") : selectedFileName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundColor(selectedFileName.isEmpty ? .white.opacity(0.5) : .white)
+            Spacer()
+            if !selectedFileName.isEmpty {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+        }
+    }
+
+    private var installedImageModels: [AIModel] {
+        ModelData.allModels().filter { $0.isDrawThingsImageGeneration && StableDiffusionBackend.isModelDownloaded(modelId: $0.id) }
+    }
+
+    @ViewBuilder
+    private func imageAddonFields(_ kind: ImageExtra.Kind) -> some View {
+        // LoRAs, encoders and embeddings are converted for one installed model's architecture.
+        if !kind.isPromptResource {
+            importField(label: settings.localized("select_model")) {
+                Picker(settings.localized("select_model"), selection: $imageAddonModelID) {
+                    ForEach(installedImageModels, id: \.id) { model in Text(model.name).tag(model.id) }
+                }
+                .pickerStyle(.menu)
+                .tint(.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .disabled(isImporting || installedImageModels.isEmpty)
+            }
+        }
+        importField(label: settings.localized(kind.label)) {
+            Button { showAddonPicker = true } label: { selectedFileRow }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("import.imageFile")
+        }
+        .fileImporter(isPresented: $showAddonPicker, allowedContentTypes: [UTType.data], allowsMultipleSelection: false) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            selectedFileURL = url
+            selectedFileName = url.lastPathComponent
+            if modelName.trimmingCharacters(in: .whitespaces).isEmpty {
+                modelName = url.deletingPathExtension().lastPathComponent
+            }
+            showError = false
+        }
+        Text(settings.localized(kind.isPromptResource ? "image_extras_resource_hint" : "image_extras_ios_help"))
+            .font(.caption)
+            .foregroundColor(.white.opacity(0.55))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                if !installedImageModels.contains(where: { $0.id == imageAddonModelID }) {
+                    imageAddonModelID = installedImageModels.first?.id ?? ""
+                }
+            }
+    }
+
+    private func importImageAddon(_ kind: ImageExtra.Kind) {
+        guard let url = selectedFileURL else { return }
+        let name = modelName
+        let modelID = kind.isPromptResource ? nil : imageAddonModelID
+        isImporting = true
+        showError = false
+        Task {
+            do {
+                try await ImageExtrasStore.shared.importFile(url, kind: kind, modelID: modelID, name: name)
+                isImporting = false
+                dismiss()
+            } catch {
+                NSLog("[ImageExtras] Import failed: %@", error.localizedDescription)
+                isImporting = false
+                showError = true
+                errorMessage = settings.localized("image_extras_invalid")
+            }
+        }
+    }
+
     @ViewBuilder
     private func importField<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1670,6 +1752,11 @@ struct ImportExternalModelSheet: View {
     }
 
     private var canImport: Bool {
+        if importKind == .image, let kind = imageAddonKind {
+            return selectedFileURL != nil
+                && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && (kind.isPromptResource || !imageAddonModelID.isEmpty)
+        }
         if importKind.isMedia {
             return selectedDrawThingsModel != nil
                 && drawThingsSizeModelID == selectedDrawThingsModel?.id
@@ -1733,6 +1820,10 @@ struct ImportExternalModelSheet: View {
     }
 
     private func performImport() {
+        if importKind == .image, let kind = imageAddonKind {
+            importImageAddon(kind)
+            return
+        }
         if importKind.isMedia {
             importDrawThingsModel()
             return

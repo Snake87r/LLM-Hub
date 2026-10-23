@@ -30,7 +30,8 @@ import java.util.Locale
 
 internal interface LlamaCppRuntime {
     fun nativeInit(libraryDir: String, htpDir: String?): Int
-    fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int): Int
+    /** [flashAttention]: -1 lets llama.cpp decide, 0 disables it, 1 enables it. */
+    fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int, flashAttention: Int): Int
     fun nativeSupportsVision(): Boolean
     fun nativeMediaMarker(): String
     fun nativeFormatChat(roles: Array<String>, contents: Array<String>): String?
@@ -40,6 +41,8 @@ internal interface LlamaCppRuntime {
     fun nativeReset()
     fun nativeUnload()
     fun nativeDecodeSpeed(): Double
+    /** Changes on every native load/unload; see llama_cpp_jni.cpp. */
+    fun nativeModelEpoch(): Int
 }
 
 /** Statically linked ARMv8 CPU runtime for every arm64 device. */
@@ -57,6 +60,7 @@ internal object LlamaCppNative : LlamaCppRuntime {
         threadCount: Int,
         deviceName: String?,
         gpuLayers: Int,
+        flashAttention: Int,
     ): Int
     external override fun nativeSupportsVision(): Boolean
     external override fun nativeMediaMarker(): String
@@ -74,14 +78,15 @@ internal object LlamaCppNative : LlamaCppRuntime {
     external override fun nativeReset()
     external override fun nativeUnload()
     external override fun nativeDecodeSpeed(): Double
+    external override fun nativeModelEpoch(): Int
 }
 
-/** Official b11683 Snapdragon OpenCL/Hexagon runtime, loaded only for GPU/NPU selection. */
+/** Official b11797 Snapdragon OpenCL/Hexagon runtime, loaded only for GPU/NPU selection. */
 internal object LlamaCppSnapdragonNative : LlamaCppRuntime {
     init { System.loadLibrary("llmhub_llama_snapdragon") }
 
     external override fun nativeInit(libraryDir: String, htpDir: String?): Int
-    external override fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int): Int
+    external override fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int, flashAttention: Int): Int
     external override fun nativeSupportsVision(): Boolean
     external override fun nativeMediaMarker(): String
     external override fun nativeFormatChat(roles: Array<String>, contents: Array<String>): String?
@@ -91,6 +96,7 @@ internal object LlamaCppSnapdragonNative : LlamaCppRuntime {
     external override fun nativeReset()
     external override fun nativeUnload()
     external override fun nativeDecodeSpeed(): Double
+    external override fun nativeModelEpoch(): Int
 }
 
 /** Portable llama.cpp source with its Vulkan GPU backend. */
@@ -98,7 +104,7 @@ internal object LlamaCppVulkanNative : LlamaCppRuntime {
     init { System.loadLibrary("llmhub_llama_vulkan") }
 
     external override fun nativeInit(libraryDir: String, htpDir: String?): Int
-    external override fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int): Int
+    external override fun nativeLoadModel(modelPath: String, mmprojPath: String?, contextSize: Int, threadCount: Int, deviceName: String?, gpuLayers: Int, flashAttention: Int): Int
     external override fun nativeSupportsVision(): Boolean
     external override fun nativeMediaMarker(): String
     external override fun nativeFormatChat(roles: Array<String>, contents: Array<String>): String?
@@ -108,6 +114,7 @@ internal object LlamaCppVulkanNative : LlamaCppRuntime {
     external override fun nativeReset()
     external override fun nativeUnload()
     external override fun nativeDecodeSpeed(): Double
+    external override fun nativeModelEpoch(): Int
 }
 
 /** GGUF text/vision inference with shared chat, search, and RAG behavior across devices. */
@@ -131,7 +138,16 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
     private var loadedDeviceId: String? = null
     private var loadedRuntimeName: String? = null
     private var overrideGpuLayers: Int? = null
+
+    /** llama.cpp flash attention: -1 lets llama.cpp decide, 0 disables it, 1 enables it. */
+    internal var flashAttention = -1
     private var currentModel: LLMModel? = null
+    // Native epoch of this service's load. Chat and Agent each own a service but share the one model
+    // slot of a native library, so another service's load silently replaces this one's model.
+    private var loadedEpoch = -1
+
+    private fun ownsNativeModel(): Boolean =
+        nativeInitialized && currentModel != null && runtime.nativeModelEpoch() == loadedEpoch
     private var contextSize = 4096
     private var lastDecodeSpeed: Double? = null
     private var visionDisabled = true
@@ -153,9 +169,12 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
     private var overrideEnableThinking: Boolean? = null
 
     private fun prepareHtpLibraries(): String {
-        val directory = File(context.filesDir, "llama_htp_b11683")
+        val directory = File(context.filesDir, "llama_htp_b11797")
+        // Skels staged for an older llama.cpp release are unused after an upgrade.
+        context.filesDir.listFiles { file -> file.isDirectory && file.name.startsWith("llama_htp_") && file != directory }
+            ?.forEach { it.deleteRecursively() }
         check(directory.isDirectory || directory.mkdirs()) { "Cannot create Hexagon library directory" }
-        for (architecture in listOf("v73", "v75", "v79", "v81")) {
+        for (architecture in listOf("v73", "v75", "v79", "v81", "v85")) {
             val name = "libggml-htp-$architecture.so"
             val target = File(directory, name)
             if (target.isFile && target.length() > 0L) continue
@@ -256,10 +275,12 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
                         threads,
                         attemptAccelerator,
                         if (attemptAccelerator == null) 0 else overrideGpuLayers ?: 999,
+                        flashAttention,
                     )
                     check(result == 0) { "llama.cpp model load failed on $attemptName with code $result" }
 
                     currentModel = model
+                    loadedEpoch = runtime.nativeModelEpoch()
                     loadedBackend = if (attemptAccelerator == null) LlmInference.Backend.CPU else LlmInference.Backend.GPU
                     loadedDeviceId = if (attemptAccelerator == null) null else deviceId
                     loadedRuntimeName = attemptName
@@ -302,7 +323,8 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
     }
 
     override suspend fun unloadModel() = withContext(dispatcher) {
-        if (nativeInitialized) runtime.nativeUnload()
+        // Never free a model another service loaded into the shared native slot.
+        if (ownsNativeModel()) runtime.nativeUnload()
         currentModel = null
         loadedBackend = null
         loadedDeviceId = null
@@ -387,7 +409,7 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
         chatId: String,
         imagePaths: List<String> = emptyList(),
     ): Flow<String> = flow {
-        check(currentModel?.name == model.name) { "Model not loaded in llama.cpp CPU fallback" }
+        check(currentModel?.name == model.name && ownsNativeModel()) { "Model not loaded in llama.cpp CPU fallback" }
 
         var effectivePrompt = prompt
         if (webSearchEnabled) {
@@ -500,7 +522,8 @@ class LlamaCppInferenceService(private val context: Context) : InferenceService 
         unloadModel()
     }
 
-    override fun getCurrentlyLoadedModel(): LLMModel? = currentModel
+    // Null once another service replaced the native model, so callers load theirs again.
+    override fun getCurrentlyLoadedModel(): LLMModel? = currentModel?.takeIf { ownsNativeModel() }
     override fun getCurrentlyLoadedBackend(): LlmInference.Backend? = loadedBackend
     fun getCurrentlyLoadedDeviceId(): String? = loadedDeviceId
     override fun getMemoryWarningForImages(images: List<Bitmap>): String? = null

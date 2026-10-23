@@ -286,6 +286,17 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     model.copy(isDownloaded = false, isDownloading = false, downloadProgress = progress, downloadedBytes = partialBytes, totalBytes = model.sizeBytes)
                 }
             }
+            // Per-SoC LiteRT Stable Diffusion builds: plain files in sd_models/<model name>/
+            else if (model.modelFormat == "litert_npu") {
+                val (bytes, complete) = liteRtSdState(model)
+                model.copy(
+                    isDownloaded = complete,
+                    isDownloading = false,
+                    downloadProgress = if (complete) 1f else if (model.sizeBytes > 0) (bytes.toFloat() / model.sizeBytes).coerceIn(0f, 0.999f) else 0f,
+                    downloadedBytes = if (complete) model.sizeBytes else bytes,
+                    totalBytes = model.sizeBytes
+                )
+            }
             // Handle image_generator models specially (multi-file format)
             else if (model.modelFormat == "image_generator") {
                 val imageGenDir = File(context.filesDir, "image_generator/bins")
@@ -596,6 +607,14 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
      * @param baseDir The base directory to search (e.g., sd_models)
      * @param modelType "qnn" for QNN models (unet.bin) or "mnn" for MNN models (unet.mnn)
      */
+    /** Bytes present for a LiteRT SD build and whether every expected file is complete. */
+    private fun liteRtSdState(model: LLMModel): Pair<Long, Boolean> {
+        val dir = File(File(context.filesDir, "sd_models"), model.name.replace(" ", "_"))
+        val bytes = dir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+        val allFiles = com.llmhub.llmhub.imagegen.StableDiffusionHelper.LITERT_FILES.all { File(dir, it).length() > 0 }
+        return bytes to (allFiles && bytes >= model.sizeBytes)
+    }
+
     private fun checkSdModelExists(baseDir: File, modelType: String): Boolean {
         if (!baseDir.exists() || !baseDir.isDirectory) return false
 
@@ -721,6 +740,21 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                         return@onCompletion
                     }
                     
+                    if (model.modelFormat == "litert_npu") {
+                        val complete = liteRtSdState(model).second && cause == null
+                        updateModel(model.name) {
+                            it.copy(
+                                isDownloaded = complete,
+                                isDownloading = false,
+                                isExtracting = false,
+                                downloadProgress = if (complete) 1f else it.downloadProgress,
+                                downloadedBytes = if (complete) model.sizeBytes else it.downloadedBytes,
+                                totalBytes = model.sizeBytes
+                            )
+                        }
+                        return@onCompletion
+                    }
+
                     // Handle image_generator models specially (multi-file format)
                     if (model.modelFormat == "image_generator") {
                         val imageGenDir = File(context.filesDir, "image_generator/bins")
@@ -1044,21 +1078,14 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
 
         // Also remove any temp SD zip downloads for Stable Diffusion models (check both cache and files dirs)
         try {
-            val sdTempCache = File(context.cacheDir, "sd_downloads")
-            if (sdTempCache.exists() && sdTempCache.isDirectory) {
-                sdTempCache.listFiles()?.forEach { f ->
-                    if (f.name.contains(model.name.replace(" ", "_")).or(f.name.endsWith(".zip"))) {
-                        try { f.delete() } catch (_: Exception) { }
-                    }
-                }
-            }
-
-            val sdTempFiles = File(context.filesDir, "sd_downloads")
-            if (sdTempFiles.exists() && sdTempFiles.isDirectory) {
-                sdTempFiles.listFiles()?.forEach { f ->
-                    if (f.name.contains(model.name.replace(" ", "_")).or(f.name.endsWith(".zip"))) {
-                        try { f.delete() } catch (_: Exception) { }
-                    }
+            // Only this model's own ZIP (ModelDownloader names it "<name with _>.zip"). Matching
+            // every ".zip" deleted other models' in-progress downloads, which then "finished" with
+            // a missing file and failed to extract.
+            val ownZip = "${model.name.replace(" ", "_")}.zip"
+            for (dir in listOf(File(context.cacheDir, "sd_downloads"), File(context.filesDir, "sd_downloads"))) {
+                val zip = File(dir, ownZip)
+                if (zip.exists()) {
+                    try { zip.delete() } catch (_: Exception) { }
                 }
             }
         } catch (_: Exception) { }
@@ -1115,7 +1142,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         
         viewModelScope.launch(Dispatchers.IO) {
             // Handle Stable Diffusion models (stored in sd_models directory)
-            if (model.modelFormat == "qnn_npu" || model.modelFormat == "mnn_cpu") {
+            if (model.modelFormat == "qnn_npu" || model.modelFormat == "mnn_cpu" || model.modelFormat == "litert_npu") {
                 val sdModelsDir = File(context.filesDir, "sd_models")
                 val modelTargetDir = File(sdModelsDir, model.name.replace(" ", "_"))
 
