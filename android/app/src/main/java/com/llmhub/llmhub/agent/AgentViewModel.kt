@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.llmhub.llmhub.R
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.llmhub.llmhub.data.LLMModel
+import com.llmhub.llmhub.data.featureThinking
 import com.llmhub.llmhub.data.DeviceInfo
 import com.llmhub.llmhub.data.ModelAvailabilityProvider
 import com.llmhub.llmhub.inference.InferenceService
@@ -217,7 +218,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         _loadingModelName.value = model.name
         try {
             val maxTokens = agentPrefs.getInt("selected_max_tokens", 4096)
-            val enableThinking = agentPrefs.getBoolean("agent_enable_thinking", true)
+            val enableThinking = agentPrefs.featureThinking(model, "agent_enable_thinking", true)
             inferenceService.setGenerationParameters(
                 maxTokens = maxTokens,
                 topK = null,
@@ -429,7 +430,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         (inferenceService as? UnifiedInferenceService)?.setAgentToolsEnabled(false)
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val agentPrefs = getApplication<Application>().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-        val enableThinking = agentPrefs.getBoolean("agent_enable_thinking", true)
+        val enableThinking = agentPrefs.featureThinking(inferenceService.getCurrentlyLoadedModel(), "agent_enable_thinking", true)
         val maxTokens = agentPrefs.getInt("selected_max_tokens", 4096)
         setGenerationParameters(maxTokens = maxTokens, enableThinking = enableThinking, contextWindow = maxTokens)
 
@@ -502,7 +503,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
             val isThinkingEnabled = try {
                 val prefs = getApplication<Application>().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                prefs.getBoolean("agent_enable_thinking", true)
+                prefs.featureThinking(inferenceService.getCurrentlyLoadedModel(), "agent_enable_thinking", true)
             } catch (_: Exception) { true }
 
             try {
@@ -630,9 +631,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         if (start < 0) return null
         val end = text.indexOf(closeTag, start + openTag.length, ignoreCase = true)
         if (end < 0) return null
-        val json = runCatching {
-            JSONObject(text.substring(start + openTag.length, end).trim())
-        }.getOrNull() ?: return null
+        val body = text.substring(start + openTag.length, end).trim()
+        val json = runCatching { JSONObject(body) }.getOrNull() ?: return parseXmlFunctionCall(body)
         val function = json.optJSONObject("function") ?: json
         val name = function.optString("name").trim()
         if (!name.matches(Regex("[a-zA-Z0-9._]+"))) return null
@@ -643,6 +643,26 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             else -> return null
         }
         return ParsedTool(name.replace('.', '_').lowercase(), args)
+    }
+
+    // LFM3's chat template writes tool calls as XML inside <tool_call>:
+    // <function=name>\n<parameter=key>\nvalue\n</parameter>\n</function>. Arguments become a JSON object.
+    private fun parseXmlFunctionCall(body: String): ParsedTool? {
+        val function = Regex("""<function=([a-zA-Z0-9._]+)>([\s\S]*?)</function>""").find(body) ?: return null
+        val arguments = JSONObject()
+        Regex("""<parameter=([^>\s]+)>\n?([\s\S]*?)\n?</parameter>""").findAll(function.groupValues[2]).forEach { parameter ->
+            val raw = parameter.groupValues[2]
+            val trimmed = raw.trim()
+            // The template renders strings verbatim and other values as JSON.
+            val value: Any = when {
+                trimmed == "true" || trimmed == "false" || trimmed == "null" ||
+                    trimmed.startsWith("{") || trimmed.startsWith("[") || trimmed.toDoubleOrNull() != null ->
+                    runCatching { JSONArray("[$trimmed]").get(0) }.getOrDefault(raw)
+                else -> raw
+            }
+            arguments.put(parameter.groupValues[1], value)
+        }
+        return ParsedTool(function.groupValues[1].replace('.', '_').lowercase(), arguments.toString())
     }
 
     private suspend fun handleParsedToolCall(tool: ParsedTool, originalPrompt: String) {
@@ -936,7 +956,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private fun extractArgValue(args: String, key: String): String? {
         val regex = Regex("""$key\s*(?:=\s*|:\s*|\(\s*)"([^"]+)"|$key\s*(?:=\s*|:\s*|\(\s*)'([^']+)'|$key\s*(?:=\s*|:\s*)\s*([^,\s)]+)""", RegexOption.IGNORE_CASE)
         val match = regex.find(args)
-        val raw = match?.groupValues?.get(1)?.ifEmpty { null }
+        // JSON arguments (tagged <tool_call> formats) quote the key, which the regex above does not expect.
+        val raw = runCatching { JSONObject(args.trim()) }.getOrNull()
+            ?.takeIf { it.has(key) && !it.isNull(key) }?.get(key)?.toString()?.ifEmpty { null }
+            ?: match?.groupValues?.get(1)?.ifEmpty { null }
             ?: match?.groupValues?.get(2)?.ifEmpty { null }
             ?: match?.groupValues?.get(3)?.ifEmpty { null }
 

@@ -24,12 +24,14 @@ android {
         applicationId = "com.llmhub.llmhub"
         minSdk = 27
         targetSdk = 37
-        versionCode = 169
-        versionName = "4.5.7"
+        versionCode = 173
+        versionName = "4.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val hfToken: String = localProperties.getProperty("HF_TOKEN", "")
         buildConfigField("String", "HF_TOKEN", "\"$hfToken\"")
+        val hfTokenFallback: String = localProperties.getProperty("HF_TOKEN_FALLBACK", "")
+        buildConfigField("String", "HF_TOKEN_FALLBACK", "\"$hfTokenFallback\"")
         val debugPremium: Boolean = localProperties.getProperty("DEBUG_PREMIUM", "false").toBoolean()
         buildConfigField("Boolean", "DEBUG_PREMIUM", "$debugPremium")
 
