@@ -29,15 +29,35 @@ jobs:
       - name: Accetta licenze Android SDK preinstallato
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Compila APK Debug con funzioni Premium
+      - name: Ripristina Keystore di Firma dai Secret
+        run: |
+          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 --decode > keystore.jks
+
+      - name: Compila APK con Firma Fissa e funzioni Premium
+        env:
+          STORE_FILE: keystore.jks
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           if [ -f "gradlew" ]; then
             echo "DEBUG_PREMIUM=true" >> local.properties
+            echo "MYAPP_UPLOAD_STORE_FILE=$STORE_FILE" >> local.properties
+            echo "MYAPP_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD" >> local.properties
+            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> local.properties
+            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
+            
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
+            
           elif [ -f "android/gradlew" ]; then
             cd android
             echo "DEBUG_PREMIUM=true" >> local.properties
+            echo "MYAPP_UPLOAD_STORE_FILE=../$STORE_FILE" >> local.properties
+            echo "MYAPP_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD" >> local.properties
+            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> local.properties
+            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
+            
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
           else
@@ -74,4 +94,5 @@ jobs:
           generate_release_notes: false
           body: |
             Build beta compilata dal sorgente con DEBUG_PREMIUM attivo.
+            Firmata con keystore persistente (aggiornabile senza disinstallazione).
             Commit progetto originale: https://github.com/timmyy123/LLM-Hub/commit/${{ steps.prep.outputs.sha_full }}
