@@ -31,33 +31,17 @@ jobs:
 
       - name: Ripristina Keystore di Firma dai Secret
         run: |
-          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 --decode > keystore.jks
+          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 --decode > "$GITHUB_WORKSPACE/keystore.jks"
 
-      - name: Compila APK con Firma Fissa e funzioni Premium
-        env:
-          STORE_FILE: keystore.jks
-          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      - name: Compila APK Debug con funzioni Premium
         run: |
           if [ -f "gradlew" ]; then
             echo "DEBUG_PREMIUM=true" >> local.properties
-            echo "MYAPP_UPLOAD_STORE_FILE=$STORE_FILE" >> local.properties
-            echo "MYAPP_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD" >> local.properties
-            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> local.properties
-            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
-            
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
-            
           elif [ -f "android/gradlew" ]; then
             cd android
             echo "DEBUG_PREMIUM=true" >> local.properties
-            echo "MYAPP_UPLOAD_STORE_FILE=../$STORE_FILE" >> local.properties
-            echo "MYAPP_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD" >> local.properties
-            echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> local.properties
-            echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
-            
             chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
           else
@@ -66,8 +50,12 @@ jobs:
             exit 1
           fi
 
-      - name: Prepara Tag e File APK Beta
+      - name: Prepara Tag e Firma File APK Beta
         id: prep
+        env:
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           BUILD_DATE=$(TZ='Europe/Rome' date +'%Y-%m-%d')
           UPSTREAM_FULL_SHA=$(git ls-remote https://github.com/timmyy123/LLM-Hub.git HEAD | awk '{print $1}')
@@ -76,7 +64,22 @@ jobs:
           RELEASE_TAG="beta-${BUILD_DATE}-${UPSTREAM_SHORT_SHA}"
           ORIG_APK=$(find . -type f -name "*.apk" | head -n 1)
           BETA_APK="LLM-Hub-${RELEASE_TAG}.apk"
-          cp "$ORIG_APK" "$BETA_APK"
+
+          # Trova l'ultima versione di apksigner preinstallata nell'SDK Android
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | sort -V | tail -n 1)
+
+          # Sovrascrive la firma di default di Gradle con il tuo keystore fisso
+          "$APKSIGNER" sign \
+            --ks "$GITHUB_WORKSPACE/keystore.jks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out "$BETA_APK" \
+            "$ORIG_APK"
+
+          # Stampa nei log l'impronta SHA-256 per verificare che sia sempre identica
+          echo "=== Impronta Certificato APK ==="
+          "$APKSIGNER" verify --print-certs "$BETA_APK"
 
           echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           echo "apk_path=$BETA_APK" >> $GITHUB_OUTPUT
@@ -94,5 +97,5 @@ jobs:
           generate_release_notes: false
           body: |
             Build beta compilata dal sorgente con DEBUG_PREMIUM attivo.
-            Firmata con keystore persistente (aggiornabile senza disinstallazione).
+            Firmata con keystore persistente tramite apksigner (aggiornabile senza disinstallazione).
             Commit progetto originale: https://github.com/timmyy123/LLM-Hub/commit/${{ steps.prep.outputs.sha_full }}
