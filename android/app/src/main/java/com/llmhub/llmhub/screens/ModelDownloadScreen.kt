@@ -150,6 +150,9 @@ fun ModelDownloadScreen(
     val videoGenGrouped = videoGenModels.groupBy { it.name.substringBefore("(").trim() }
 
     var showImportDialog by remember { mutableStateOf(false) }
+    var showStorageDialog by remember { mutableStateOf(false) }
+    // The storage choice is offered while an SD card is in, or while models are on one.
+    val canChooseStorage = remember { com.llmhub.llmhub.data.ModelStorage.sdCardRoot(context) != null || com.llmhub.llmhub.data.ModelStorage.isOnSdCard(context) }
     var errorDialogInfo by remember { mutableStateOf<Pair<String, String>?>(null) }
     val tabs = listOf(
         DownloadCategory.MULTIMODAL,
@@ -204,6 +207,13 @@ fun ModelDownloadScreen(
                             contentDescription = stringResource(R.string.back),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                },
+                actions = {
+                    if (canChooseStorage) {
+                        IconButton(onClick = { showStorageDialog = true }) {
+                            Icon(Icons.Default.SdStorage, contentDescription = stringResource(R.string.model_storage_title))
+                        }
                     }
                 }
             )
@@ -446,6 +456,10 @@ fun ModelDownloadScreen(
             }
         }
         
+        if (showStorageDialog) {
+            com.llmhub.llmhub.components.ModelStorageDialog(onDismiss = { showStorageDialog = false }, onMoved = {})
+        }
+
         // Import External Model Dialog
         if (showImportDialog) {
             ImportExternalModelDialog(

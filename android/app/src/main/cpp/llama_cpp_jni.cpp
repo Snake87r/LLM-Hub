@@ -4,11 +4,13 @@
 #include <sys/auxv.h>
 
 #include <algorithm>
+#include <cmath>
 #include <atomic>
 #include <chrono>
 #include <mutex>
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <thread>
 #include <vector>
@@ -33,6 +35,8 @@ constexpr const char * TAG = "LlamaCppFallback";
 llama_model * g_model = nullptr;
 llama_context * g_context = nullptr;
 llama_sampler * g_sampler = nullptr;
+// Optional output grammar (GBNF), checked per token like llama.cpp common_sampler: see sample_next().
+llama_sampler * g_grammar = nullptr;
 mtmd_context * g_mtmd = nullptr;
 std::atomic_bool g_stop{false};
 // One model per library, shared by every Kotlin service that uses it (Chat and Agent each have
@@ -47,11 +51,16 @@ int32_t g_max_tokens = 0;
 int64_t g_decode_start_us = 0;
 std::string g_utf8_buffer;
 bool g_backend_initialized = false;
+// Set when ggml fails to allocate a buffer. clip's warmup ignores a failed compute-buffer reserve
+// and then encodes into the missing buffer (null dereference), so the projector load checks this.
+std::atomic_bool g_alloc_failed{false};
 
 void log_callback(ggml_log_level level, const char * text, void *) {
     int priority = ANDROID_LOG_DEBUG;
-    if (level == GGML_LOG_LEVEL_ERROR) priority = ANDROID_LOG_ERROR;
-    else if (level == GGML_LOG_LEVEL_WARN) priority = ANDROID_LOG_WARN;
+    if (level == GGML_LOG_LEVEL_ERROR) {
+        priority = ANDROID_LOG_ERROR;
+        if (text != nullptr && std::strstr(text, "failed to allocate") != nullptr) g_alloc_failed = true;
+    } else if (level == GGML_LOG_LEVEL_WARN) priority = ANDROID_LOG_WARN;
     else if (level == GGML_LOG_LEVEL_INFO) priority = ANDROID_LOG_INFO;
     __android_log_write(priority, TAG, text);
 }
@@ -93,6 +102,34 @@ void free_sampler() {
         llama_sampler_free(g_sampler);
         g_sampler = nullptr;
     }
+    if (g_grammar != nullptr) {
+        llama_sampler_free(g_grammar);
+        g_grammar = nullptr;
+    }
+}
+
+// Sample with the normal chain and keep the token when the grammar allows it. Only when it does not is the grammar
+// applied to the whole vocabulary first, which is the expensive part (the same approach as llama.cpp's common_sampler).
+llama_token sample_next(const llama_vocab * vocab) {
+    if (g_grammar == nullptr) return llama_sampler_sample(g_sampler, g_context, -1);
+    const float * logits = llama_get_logits_ith(g_context, -1);
+    const int32_t n_vocab = llama_vocab_n_tokens(vocab);
+    std::vector<llama_token_data> candidates(static_cast<size_t>(n_vocab));
+    auto sample = [&](bool constrained) {
+        for (int32_t i = 0; i < n_vocab; ++i) candidates[static_cast<size_t>(i)] = {i, logits[i], 0.0f};
+        llama_token_data_array array = {candidates.data(), candidates.size(), -1, false};
+        if (constrained) llama_sampler_apply(g_grammar, &array);
+        llama_sampler_apply(g_sampler, &array);
+        return array.data[array.selected].id;
+    };
+    llama_token token = sample(false);
+    llama_token_data single = {token, 1.0f, 0.0f};
+    llama_token_data_array check = {&single, 1, -1, false};
+    llama_sampler_apply(g_grammar, &check);
+    if (std::isinf(single.logit) && single.logit < 0) token = sample(true);
+    llama_sampler_accept(g_grammar, token);
+    llama_sampler_accept(g_sampler, token);
+    return token;
 }
 
 void unload_model() {
@@ -278,7 +315,26 @@ LLAMA_JNI(nativeLoadModel)(
 #endif
         mtmd_params.n_threads = thread_count;
         mtmd_params.print_timings = true;
+        g_alloc_failed = false;
         g_mtmd = mtmd_init_from_file(projector_path.c_str(), g_model, mtmd_params);
+#if defined(LLMHUB_SNAPDRAGON) || defined(LLMHUB_VULKAN)
+        if (g_mtmd != nullptr && mtmd_params.use_gpu && g_alloc_failed) {
+            // The encoder's compute buffer did not fit on the accelerator (LFM3 VL warms up at
+            // 1472x1472 and Adreno OpenCL has no flash attention for it, so it asks for one 4.4 GB
+            // buffer). On a GPU, run the encoder on the CPU and keep the text model on the GPU.
+            // An NPU request never moves the encoder to the CPU: it fails the projector load instead.
+            mtmd_free(g_mtmd);
+            g_mtmd = nullptr;
+            if (requested_device.rfind("HTP", 0) == 0) {
+                __android_log_write(ANDROID_LOG_ERROR, TAG, "Vision encoder does not fit on the NPU");
+            } else {
+                __android_log_write(ANDROID_LOG_WARN, TAG, "Vision encoder does not fit on the GPU; using the CPU for it");
+                mtmd_params.use_gpu = false;
+                mtmd_params.device = nullptr;
+                g_mtmd = mtmd_init_from_file(projector_path.c_str(), g_model, mtmd_params);
+            }
+        }
+#endif
         if (g_mtmd == nullptr || !mtmd_support_vision(g_mtmd)) {
             __android_log_print(
                 ANDROID_LOG_ERROR, TAG, "Failed to load vision projector: %s", projector_path.c_str());
@@ -328,7 +384,7 @@ LLAMA_JNI(nativeFormatChat)(
 extern "C" JNIEXPORT jint JNICALL
 LLAMA_JNI(nativeStartCompletion)(
     JNIEnv * env, jobject, jstring formatted_prompt, jobjectArray image_path_array,
-    jint max_tokens, jfloat temperature, jint top_k, jfloat top_p) {
+    jint max_tokens, jfloat temperature, jint top_k, jfloat top_p, jstring grammar) {
     std::lock_guard<std::recursive_mutex> lock(g_mutex);
     if (g_model == nullptr || g_context == nullptr) return 1;
 
@@ -346,6 +402,12 @@ LLAMA_JNI(nativeStartCompletion)(
     llama_sampler_chain_add(g_sampler, llama_sampler_init_temp(
         std::max(0.0f, static_cast<float>(temperature))));
     llama_sampler_chain_add(g_sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+    const std::string grammar_text = from_jstring(env, grammar);
+    if (!grammar_text.empty()) {
+        g_grammar = llama_sampler_init_grammar(llama_model_get_vocab(g_model), grammar_text.c_str(), "root");
+        // An invalid grammar is a caller bug; generate unconstrained rather than fail the reply.
+        if (g_grammar == nullptr) __android_log_print(ANDROID_LOG_ERROR, TAG, "Output grammar rejected; generating without it");
+    }
 
     const std::string prompt = from_jstring(env, formatted_prompt);
     if (prompt.empty()) return 2;
@@ -489,8 +551,8 @@ LLAMA_JNI(nativeNextToken)(JNIEnv * env, jobject) {
         return nullptr;
     }
 
-    llama_token token = llama_sampler_sample(g_sampler, g_context, -1);
     const llama_vocab * vocab = llama_model_get_vocab(g_model);
+    llama_token token = sample_next(vocab);
     if (llama_vocab_is_eog(vocab, token)) return nullptr;
 
     int32_t piece_size = llama_token_to_piece(vocab, token, nullptr, 0, 0, true);

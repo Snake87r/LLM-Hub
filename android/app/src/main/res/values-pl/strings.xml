@@ -119,6 +119,14 @@
     <string name="information">Informacje</string>
     <string name="source_code_section">Kod Źródłowy</string>
     <string name="download_models">Pobierz Modele</string>
+    <string name="model_storage_title">Miejsce na modele</string>
+    <string name="model_storage_internal">Pamięć wewnętrzna</string>
+    <string name="model_storage_sd_card">Karta SD</string>
+    <string name="model_storage_free">Wolne: %1$s</string>
+    <string name="model_storage_note">Twoje modele zajmują %1$s. Są przenoszone razem, a nowe pobrania trafiają w to samo miejsce. Modele na karcie SD są niedostępne, gdy karta jest wyjęta.</string>
+    <string name="model_storage_moving">Przenoszenie modeli: %1$d%%</string>
+    <string name="model_storage_failed">Nie udało się przenieść modeli: %1$s</string>
+    <string name="model_storage_move">Przenieś modele</string>
     <string name="browse_download_models">Przeglądaj i pobieraj modele LLM</string>
     <string name="embedding_model">Model Osadzania</string>
     <string name="select_embedding_model">Wybierz Model Osadzania</string>
@@ -995,6 +1003,7 @@
     <string name="agent_mcp_termux_not_installed">Wymagany jest Termux 0.109 lub nowszy.</string>
     <string name="agent_mcp_termux_timed_out">Termux nie zwrócił wyniku przed upływem limitu czasu.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Ta wersja Termux z Google Play nie obsługuje poleceń zewnętrznych. Dla stdio użyj wersji Termux z F-Droid/GitHub albo wybierz Zdalny HTTP.</string>
+    <string name="agent_mcp_termux_disabled">Termux jest wyłączony lub Android go uśpił, więc LLM Hub nie może uruchamiać w nim poleceń. Otwórz raz Termux albo stuknij Otwórz Ustawienia i włącz go ponownie, a potem spróbuj jeszcze raz.</string>
     <string name="gguf_engine">Silnik GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (domyślny)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1113,6 +1122,14 @@
     <string name="vibe_codex_syncing">Wprowadzanie zmian w projekcie…</string>
     <string name="vibe_codex_step_progress">Krok agenta %1$d · próba %2$d · wygenerowano %3$d znaków</string>
     <string name="vibe_codex_saved_verified">Zapisano %1$s i zweryfikowano jego zawartość.</string>
+    <string name="vibe_claude_code_mode">Tryb Claude Code</string>
+    <string name="vibe_claude_code_install">Zainstaluj Claude Code w Termux</string>
+    <string name="vibe_claude_code_install_help">Włącz polecenia aplikacji zewnętrznych w Termux, a następnie zainstaluj Claude Code przed rozpoczęciem.</string>
+    <string name="vibe_claude_code_installing">Instalowanie Claude Code w Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code jest zainstalowany. Wybrany model lokalny jest gotowy do użycia.</string>
+    <string name="vibe_claude_code_failed">Claude Code nie powiódł się. Sprawdź konfigurację Termux, model lokalny i dzienniki aplikacji.</string>
+    <string name="vibe_claude_code_starting">Uruchamianie Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Tryb Claude Code wymaga folderu w pamięci wewnętrznej. Najpierw otwórz folder.</string>
     <string name="tts_voice_name">Nazwa głosu</string>
     <string name="tts_voice_rename_failed">Nie udało się zmienić nazwy tego głosu. Spróbuj ponownie.</string>
     <!-- Video Generator -->
@@ -1151,6 +1168,7 @@
     <string name="video_generator_generate_failed">Generowanie wideo nie powiodło się: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Wczytano: %1$s na %2$s</string>
     <string name="video_generator_steps">Kroki</string>
     <string name="video_generator_width">Szerokość</string>

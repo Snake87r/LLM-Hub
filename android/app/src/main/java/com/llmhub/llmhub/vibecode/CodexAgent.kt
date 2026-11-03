@@ -26,10 +26,12 @@ internal class CodexAgent(private val context: Context) {
     suspend fun run(
         prompt: String, folder: String, session: String, thread: String?,
         editorUri: String?, editorName: String?, editorCode: String, contextWindow: Int,
-        infer: suspend (String, (String) -> Unit) -> String,
+        infer: suspend (prompt: String, grammar: String?, onDelta: (String) -> Unit) -> String,
         onThread: (String) -> Unit,
         onMessage: (CodexActivity) -> Unit,
-        editorDirty: Boolean = false
+        editorDirty: Boolean = false,
+        /** Normal mode's rule for the file's language, so agent output meets the same bar. */
+        target: String? = null
     ): Map<String, Uri> = coroutineScope {
         check(Build.VERSION.SDK_INT >= 29 && Build.SUPPORTED_ABIS.contains("arm64-v8a")) {
             context.getString(R.string.vibe_codex_requirements)
@@ -40,7 +42,7 @@ internal class CodexAgent(private val context: Context) {
         val home = "/data/data/com.termux/files/home/.llmhub-codex"
         val workspace = CodexWorkspace(context, Uri.parse(folder), home)
         val renderer = CodexActivityRenderer()
-        val server = LocalCodexServer({ infer(it) {} }, context.getString(R.string.vibe_codex_model_error), streamInfer = infer,
+        val server = LocalCodexServer({ infer(it, null) {} }, context.getString(R.string.vibe_codex_model_error), streamInfer = infer,
             verifiedFileSummary = { context.getString(R.string.vibe_codex_saved_verified, it) },
             onProgress = { id, step, attempt, raw ->
                 onMessage(CodexActivity("progress-$id", context.getString(R.string.vibe_codex_step_progress,
@@ -101,14 +103,8 @@ internal class CodexAgent(private val context: Context) {
             val threadId = resumed.getJSONObject("thread").getString("id")
             onThread(threadId)
             status(R.string.vibe_codex_generating)
-            val turnPrompt = buildString {
-                if (!editorName.isNullOrBlank()) {
-                    append("Active editor file: ").append(editorName).append("\n")
-                    append("Read the current file from disk using tools. Its contents may have changed since earlier turns.\n")
-                    append("\nUser request:\n")
-                }
-                append(prompt)
-            }
+            val turnPrompt = AgentTurnPrompt.build(prompt, editorName, editorName, editorCode, contextWindow, target,
+                writeTool = "write_file", editTool = "replace_in_file")
             val turn = rpc.request("turn/start", JSONObject().put("threadId", threadId).put("cwd", workspace.remote)
                 .put("approvalPolicy", CodexApprovals.POLICY)
                 .put("input", JSONArray().put(JSONObject().put("type", "text").put("text", turnPrompt)

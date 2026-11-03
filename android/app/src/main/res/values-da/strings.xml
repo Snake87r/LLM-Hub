@@ -119,6 +119,14 @@
     <string name="information">Information</string>
     <string name="source_code_section">Kildekode</string>
     <string name="download_models">Download modeller</string>
+    <string name="model_storage_title">Lagring af modeller</string>
+    <string name="model_storage_internal">Intern lagerplads</string>
+    <string name="model_storage_sd_card">SD-kort</string>
+    <string name="model_storage_free">%1$s ledig</string>
+    <string name="model_storage_note">Dine modeller fylder %1$s. De flyttes samlet, og nye downloads gemmes samme sted. Modeller på SD-kortet er ikke tilgængelige, mens kortet er taget ud.</string>
+    <string name="model_storage_moving">Flytter modeller: %1$d%%</string>
+    <string name="model_storage_failed">Modellerne kunne ikke flyttes: %1$s</string>
+    <string name="model_storage_move">Flyt modeller</string>
     <string name="browse_download_models">Gennemse og download LLM-modeller</string>
     <string name="embedding_model">Indlejringsmodel</string>
     <string name="select_embedding_model">Vælg Embedding Model</string>
@@ -959,6 +967,7 @@ Du forsøger at sende et billede, men den nuværende model er **kun-tekst**:
     <string name="agent_mcp_termux_not_installed">Termux 0.109 eller nyere er påkrævet.</string>
     <string name="agent_mcp_termux_timed_out">Termux returnerede intet resultat før timeout.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Denne Google Play-version af Termux understøtter ikke eksterne kommandoer. Brug F-Droid/GitHub-versionen af Termux til stdio, eller vælg Ekstern HTTP.</string>
+    <string name="agent_mcp_termux_disabled">Termux er slået fra eller sat i dvale af Android, så LLM Hub kan ikke køre kommandoer i det. Åbn Termux én gang, eller tryk på Åbn Indstillinger og slå det til igen, og prøv så igen.</string>
     <string name="gguf_engine">GGUF-motor</string>
     <string name="gguf_engine_geniex_default">GenieX (standard)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1077,6 +1086,14 @@ Du forsøger at sende et billede, men den nuværende model er **kun-tekst**:
     <string name="vibe_codex_syncing">Anvender projektændringer…</string>
     <string name="vibe_codex_step_progress">Agenttrin %1$d · forsøg %2$d · %3$d tegn genereret</string>
     <string name="vibe_codex_saved_verified">Gemte %1$s og bekræftede indholdet.</string>
+    <string name="vibe_claude_code_mode">Claude Code-tilstand</string>
+    <string name="vibe_claude_code_install">Installer Claude Code i Termux</string>
+    <string name="vibe_claude_code_install_help">Aktivér kommandoer fra eksterne apps i Termux, og installer Claude Code før start.</string>
+    <string name="vibe_claude_code_installing">Installerer Claude Code i Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code er installeret. Din valgte lokale model er klar til brug.</string>
+    <string name="vibe_claude_code_failed">Claude Code mislykkedes. Kontrollér Termux-opsætningen, den lokale model og appens logfiler.</string>
+    <string name="vibe_claude_code_starting">Starter Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Claude Code-tilstand kræver en mappe i det interne lager. Åbn en mappe først.</string>
     <string name="tts_voice_name">Stemmenavn</string>
     <string name="tts_voice_rename_failed">Stemmen kunne ikke omdøbes. Prøv igen.</string>
     <!-- Video Generator -->
@@ -1115,6 +1132,7 @@ Du forsøger at sende et billede, men den nuværende model er **kun-tekst**:
     <string name="video_generator_generate_failed">Videogenerering mislykkedes: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Indlæst: %1$s på %2$s</string>
     <string name="video_generator_steps">Trin</string>
     <string name="video_generator_width">Bredde</string>

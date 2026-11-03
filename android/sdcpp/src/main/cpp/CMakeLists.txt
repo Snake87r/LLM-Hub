@@ -47,6 +47,22 @@ if(NOT LLMHUB_LLAMA_VERSION)
 endif()
 add_compile_definitions(LLMHUB_LLAMA_SOURCE_VERSION="${LLMHUB_LLAMA_VERSION}")
 set(GGML_SOURCE_DIR "${ANDROID_ROOT}/llama.cpp/ggml")
+
+# OpenCL backend (Adreno kernels) for GGUF video models on Snapdragon GPUs, whose Vulkan driver
+# crashes on ggml's shaders. opencl/cl_shim.cpp forwards the OpenCL calls to the vendor driver via
+# dlopen, so this library has no libOpenCL.so dependency and still loads on phones without one
+# (ggml then reports no OpenCL device). The shim also creates the context at low GPU priority and
+# keeps at most two kernels in flight, so ggml's kernels do not starve the UI (issue #133).
+# Regenerate the shim with opencl/gen_cl_shim.py when ggml starts using new OpenCL functions.
+add_library(llmhub_opencl_shim STATIC "${CMAKE_CURRENT_LIST_DIR}/opencl/cl_shim.cpp")
+target_include_directories(llmhub_opencl_shim PUBLIC "${CMAKE_CURRENT_LIST_DIR}/opencl/include")
+target_link_libraries(llmhub_opencl_shim PRIVATE dl log)
+set(OpenCL_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/opencl/include" CACHE PATH "" FORCE)
+set(OpenCL_LIBRARY llmhub_opencl_shim CACHE STRING "" FORCE)
+set(GGML_OPENCL ON CACHE BOOL "" FORCE)
+set(GGML_OPENCL_USE_ADRENO_KERNELS ON CACHE BOOL "" FORCE)
+set(GGML_OPENCL_EMBED_KERNELS ON CACHE BOOL "" FORCE)
+
 add_subdirectory("${GGML_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ggml")
 target_include_directories(ggml-vulkan PRIVATE "${NDK_SPIRV_HEADERS}")
 
@@ -65,4 +81,4 @@ add_library(llmhub_sdcpp SHARED sdcpp_jni.cpp imagegen_sdcpp_jni.cpp)
 target_include_directories(llmhub_sdcpp PRIVATE "${ANDROID_ROOT}/stable-diffusion.cpp/thirdparty")
 target_compile_options(llmhub_sdcpp PRIVATE -fvisibility=hidden)
 target_link_options(llmhub_sdcpp PRIVATE "-Wl,--exclude-libs,ALL" "-Wl,-Bsymbolic")
-target_link_libraries(llmhub_sdcpp PRIVATE stable-diffusion android log)
+target_link_libraries(llmhub_sdcpp PRIVATE stable-diffusion llmhub_opencl_shim android log)

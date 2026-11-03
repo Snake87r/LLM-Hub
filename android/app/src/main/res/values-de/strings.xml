@@ -116,6 +116,14 @@
     <string name="information">Informationen</string>
     <string name="source_code_section">Quellcode</string>
     <string name="download_models">Modelle Herunterladen</string>
+    <string name="model_storage_title">Modellspeicher</string>
+    <string name="model_storage_internal">Interner Speicher</string>
+    <string name="model_storage_sd_card">SD-Karte</string>
+    <string name="model_storage_free">%1$s frei</string>
+    <string name="model_storage_note">Deine Modelle belegen %1$s. Sie werden zusammen verschoben, und neue Downloads landen am selben Ort. Modelle auf der SD-Karte sind nicht verfügbar, solange die Karte entfernt ist.</string>
+    <string name="model_storage_moving">Modelle werden verschoben: %1$d%%</string>
+    <string name="model_storage_failed">Die Modelle konnten nicht verschoben werden: %1$s</string>
+    <string name="model_storage_move">Modelle verschieben</string>
     <string name="browse_download_models">LLM-Modelle durchsuchen und herunterladen</string>
     <string name="web_search">Web-Suche</string>
     <string name="web_search_enabled">Aktuelle Informationen aus dem Web abrufen</string>
@@ -957,6 +965,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 oder neuer ist erforderlich.</string>
     <string name="agent_mcp_termux_timed_out">Termux hat vor dem Zeitlimit kein Ergebnis zurückgegeben.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Diese Google-Play-Version von Termux unterstützt keine externen Befehle. Verwende für stdio die F-Droid-/GitHub-Version von Termux oder wähle Externes HTTP.</string>
+    <string name="agent_mcp_termux_disabled">Termux ist deaktiviert oder wurde von Android in den Ruhezustand versetzt, daher kann LLM Hub dort keine Befehle ausführen. Öffne Termux einmal oder tippe auf „Einstellungen öffnen“ und aktiviere es wieder. Versuche es dann erneut.</string>
     <string name="gguf_engine">GGUF-Engine</string>
     <string name="gguf_engine_geniex_default">GenieX (Standard)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1075,6 +1084,14 @@
     <string name="vibe_codex_syncing">Projektänderungen werden angewendet…</string>
     <string name="vibe_codex_step_progress">Agentenschritt %1$d · Versuch %2$d · %3$d Zeichen generiert</string>
     <string name="vibe_codex_saved_verified">%1$s gespeichert und Inhalt überprüft.</string>
+    <string name="vibe_claude_code_mode">Claude-Code-Modus</string>
+    <string name="vibe_claude_code_install">Claude Code in Termux installieren</string>
+    <string name="vibe_claude_code_install_help">Aktiviere Befehle externer Apps in Termux und installiere Claude Code vor dem Start.</string>
+    <string name="vibe_claude_code_installing">Claude Code wird in Termux installiert…</string>
+    <string name="vibe_claude_code_installed">Claude Code ist installiert. Dein ausgewähltes lokales Modell ist einsatzbereit.</string>
+    <string name="vibe_claude_code_failed">Claude Code ist fehlgeschlagen. Prüfe die Termux-Einrichtung, das lokale Modell und die App-Protokolle.</string>
+    <string name="vibe_claude_code_starting">Claude Code wird gestartet…</string>
+    <string name="vibe_claude_code_folder_required">Der Claude-Code-Modus braucht einen Ordner im internen Speicher. Öffne zuerst einen Ordner.</string>
     <string name="tts_voice_name">Name der Stimme</string>
     <string name="tts_voice_rename_failed">Diese Stimme konnte nicht umbenannt werden. Bitte versuche es erneut.</string>
     <!-- Video Generator -->
@@ -1113,6 +1130,7 @@
     <string name="video_generator_generate_failed">Videogenerierung fehlgeschlagen: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Geladen: %1$s auf %2$s</string>
     <string name="video_generator_steps">Schritte</string>
     <string name="video_generator_width">Breite</string>

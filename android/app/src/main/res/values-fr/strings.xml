@@ -119,6 +119,14 @@
     <string name="information">Informations</string>
     <string name="source_code_section">Code Source</string>
     <string name="download_models">Télécharger Modèles</string>
+    <string name="model_storage_title">Stockage des modèles</string>
+    <string name="model_storage_internal">Stockage interne</string>
+    <string name="model_storage_sd_card">Carte SD</string>
+    <string name="model_storage_free">%1$s libres</string>
+    <string name="model_storage_note">Vos modèles occupent %1$s. Ils sont déplacés ensemble et les nouveaux téléchargements vont au même endroit. Les modèles sur la carte SD sont indisponibles tant que la carte est retirée.</string>
+    <string name="model_storage_moving">Déplacement des modèles : %1$d %%</string>
+    <string name="model_storage_failed">Impossible de déplacer les modèles : %1$s</string>
+    <string name="model_storage_move">Déplacer les modèles</string>
     <string name="browse_download_models">Parcourir et télécharger modèles LLM</string>
     <string name="embedding_model">Modèle d\'Embedding</string>
     <string name="select_embedding_model">Sélectionner Modèle d\'Embedding</string>
@@ -977,6 +985,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 ou version ultérieure est requis.</string>
     <string name="agent_mcp_termux_timed_out">Termux n’a renvoyé aucun résultat avant l’expiration du délai.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Cette version Google Play de Termux ne prend pas en charge les commandes externes. Utilisez la version F-Droid/GitHub de Termux pour stdio ou sélectionnez HTTP distant.</string>
+    <string name="agent_mcp_termux_disabled">Termux est désactivé ou Android l’a mis en veille, donc LLM Hub ne peut pas y exécuter de commandes. Ouvrez Termux une fois, ou appuyez sur Ouvrir les paramètres pour le réactiver, puis réessayez.</string>
     <string name="gguf_engine">Moteur GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (par défaut)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1095,6 +1104,14 @@
     <string name="vibe_codex_syncing">Application des modifications du projet…</string>
     <string name="vibe_codex_step_progress">Étape de l’agent %1$d · tentative %2$d · %3$d caractères générés</string>
     <string name="vibe_codex_saved_verified">%1$s a été enregistré et son contenu vérifié.</string>
+    <string name="vibe_claude_code_mode">Mode Claude Code</string>
+    <string name="vibe_claude_code_install">Installer Claude Code dans Termux</string>
+    <string name="vibe_claude_code_install_help">Activez les commandes des applications externes dans Termux, puis installez Claude Code avant de commencer.</string>
+    <string name="vibe_claude_code_installing">Installation de Claude Code dans Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code est installé. Votre modèle local sélectionné est prêt.</string>
+    <string name="vibe_claude_code_failed">Échec de Claude Code. Vérifiez la configuration de Termux, le modèle local et les journaux de l’application.</string>
+    <string name="vibe_claude_code_starting">Démarrage de Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Le mode Claude Code a besoin d’un dossier du stockage interne. Ouvrez-en un d’abord.</string>
     <string name="tts_voice_name">Nom de la voix</string>
     <string name="tts_voice_rename_failed">Impossible de renommer cette voix. Réessayez.</string>
     <!-- Video Generator -->
@@ -1133,6 +1150,7 @@
     <string name="video_generator_generate_failed">Échec de la génération vidéo : %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Chargé : %1$s sur %2$s</string>
     <string name="video_generator_steps">Étapes</string>
     <string name="video_generator_width">Largeur</string>

@@ -119,6 +119,14 @@
     <string name="information">Information</string>
     <string name="source_code_section">Source Code</string>
     <string name="download_models">Download Models</string>
+    <string name="model_storage_title">Model storage</string>
+    <string name="model_storage_internal">Internal storage</string>
+    <string name="model_storage_sd_card">SD card</string>
+    <string name="model_storage_free">%1$s free</string>
+    <string name="model_storage_note">Your models use %1$s. They are moved together, and new downloads go to the same place. Models on the SD card are unavailable while it is removed.</string>
+    <string name="model_storage_moving">Moving models: %1$d%%</string>
+    <string name="model_storage_failed">Could not move the models: %1$s</string>
+    <string name="model_storage_move">Move models</string>
     <string name="browse_download_models">Browse and download LLM models</string>
     <string name="embedding_model">Embedding Model</string>
     <string name="select_embedding_model">Select Embedding Model</string>
@@ -1006,6 +1014,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 or newer is required.</string>
     <string name="agent_mcp_termux_timed_out">Termux returned no result before the timeout.</string>
     <string name="agent_mcp_termux_run_command_unavailable">This Google Play Termux build does not support external commands. Use the F-Droid/GitHub Termux build for stdio, or select Remote HTTP.</string>
+    <string name="agent_mcp_termux_disabled">Termux is turned off or Android put it to sleep, so LLM Hub can’t run commands in it. Open Termux once, or tap Open Settings and turn it back on, then try again.</string>
     <string name="gguf_engine">GGUF engine</string>
     <string name="gguf_engine_geniex_default">GenieX (default)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1127,6 +1136,14 @@
     <string name="vibe_codex_syncing">Applying project changes…</string>
     <string name="vibe_codex_step_progress">Agent step %1$d · attempt %2$d · %3$d characters generated</string>
     <string name="vibe_codex_saved_verified">Saved %1$s and verified its contents.</string>
+    <string name="vibe_claude_code_mode">Claude Code mode</string>
+    <string name="vibe_claude_code_install">Install Claude Code in Termux</string>
+    <string name="vibe_claude_code_install_help">Enable external app commands in Termux, then install Claude Code before starting.</string>
+    <string name="vibe_claude_code_installing">Installing Claude Code in Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code is installed. Your selected local model is ready to use.</string>
+    <string name="vibe_claude_code_failed">Claude Code failed. Check Termux setup, the local model, and the app logs.</string>
+    <string name="vibe_claude_code_starting">Starting Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Claude Code mode needs a folder in internal storage. Open one first.</string>
     <string name="tts_voice_name">Voice name</string>
     <string name="tts_voice_rename_failed">Could not rename this voice. Please try again.</string>
     <!-- Video Generator -->
@@ -1165,6 +1182,7 @@
     <string name="video_generator_generate_failed">Video generation failed: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Loaded: %1$s on %2$s</string>
     <string name="video_generator_steps">Steps</string>
     <string name="video_generator_width">Width</string>

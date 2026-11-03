@@ -118,6 +118,14 @@
     <string name="information">اطلاعات</string>
     <string name="source_code_section">کد منبع</string>
     <string name="download_models">دانلود مدل‌ها</string>
+    <string name="model_storage_title">محل ذخیره مدل‌ها</string>
+    <string name="model_storage_internal">حافظه داخلی</string>
+    <string name="model_storage_sd_card">کارت SD</string>
+    <string name="model_storage_free">%1$s آزاد</string>
+    <string name="model_storage_note">مدل‌های شما %1$s فضا گرفته‌اند. همه با هم منتقل می‌شوند و دانلودهای جدید هم همان‌جا ذخیره می‌شوند. وقتی کارت SD خارج شده باشد، مدل‌های روی آن در دسترس نیستند.</string>
+    <string name="model_storage_moving">در حال انتقال مدل‌ها: %1$d%%</string>
+    <string name="model_storage_failed">انتقال مدل‌ها انجام نشد: %1$s</string>
+    <string name="model_storage_move">انتقال مدل‌ها</string>
     <string name="browse_download_models">مرور و دانلود مدل‌های LLM</string>
     <string name="embedding_model">مدل امبدینگ</string>
     <string name="select_embedding_model">انتخاب مدل امبدینگ</string>
@@ -991,6 +999,7 @@
     <string name="agent_mcp_termux_not_installed">Termux نسخه 0.109 یا جدیدتر لازم است.</string>
     <string name="agent_mcp_termux_timed_out">Termux پیش از پایان مهلت هیچ نتیجه‌ای برنگرداند.</string>
     <string name="agent_mcp_termux_run_command_unavailable">نسخه Google Play ترموکس از فرمان‌های خارجی پشتیبانی نمی‌کند. برای stdio از نسخه F-Droid/GitHub ترموکس استفاده کنید یا HTTP راه دور را انتخاب کنید.</string>
+    <string name="agent_mcp_termux_disabled">‏Termux خاموش است یا Android آن را به حالت خواب برده است، بنابراین LLM Hub نمی‌تواند در آن فرمان اجرا کند. یک بار Termux را باز کنید، یا روی باز کردن تنظیمات بزنید و آن را دوباره فعال کنید، سپس دوباره امتحان کنید.</string>
     <string name="gguf_engine">موتور GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (پیش‌فرض)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1109,6 +1118,14 @@
     <string name="vibe_codex_syncing">در حال اعمال تغییرات پروژه…</string>
     <string name="vibe_codex_step_progress">مرحلهٔ عامل %1$d · تلاش %2$d · %3$d نویسه تولید شد</string>
     <string name="vibe_codex_saved_verified">%1$s ذخیره و محتوای آن بررسی شد.</string>
+    <string name="vibe_claude_code_mode">حالت Claude Code</string>
+    <string name="vibe_claude_code_install">نصب Claude Code در Termux</string>
+    <string name="vibe_claude_code_install_help">فرمان‌های برنامه‌های خارجی را در Termux فعال کنید و پیش از شروع Claude Code را نصب کنید.</string>
+    <string name="vibe_claude_code_installing">در حال نصب Claude Code در Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code نصب شد. مدل محلی انتخابی شما آماده استفاده است.</string>
+    <string name="vibe_claude_code_failed">Claude Code ناموفق بود. تنظیمات Termux، مدل محلی و گزارش‌های برنامه را بررسی کنید.</string>
+    <string name="vibe_claude_code_starting">در حال راه‌اندازی Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">حالت Claude Code به پوشه‌ای در حافظه داخلی نیاز دارد. ابتدا یک پوشه باز کنید.</string>
     <string name="tts_voice_name">نام صدا</string>
     <string name="tts_voice_rename_failed">تغییر نام این صدا ممکن نشد. دوباره تلاش کنید.</string>
     <!-- Video Generator -->
@@ -1147,6 +1164,7 @@
     <string name="video_generator_generate_failed">ساخت ویدیو ناموفق بود: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">بارگذاری‌شده: %1$s روی %2$s</string>
     <string name="video_generator_steps">مراحل</string>
     <string name="video_generator_width">عرض</string>

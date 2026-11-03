@@ -107,6 +107,14 @@
     <string name="information">Thông tin</string>
     <string name="source_code_section">Mã Nguồn</string>
     <string name="download_models">Tải xuống mô hình</string>
+    <string name="model_storage_title">Nơi lưu mô hình</string>
+    <string name="model_storage_internal">Bộ nhớ trong</string>
+    <string name="model_storage_sd_card">Thẻ SD</string>
+    <string name="model_storage_free">Còn trống %1$s</string>
+    <string name="model_storage_note">Các mô hình của bạn dùng %1$s. Chúng được chuyển cùng nhau và lượt tải mới cũng lưu ở cùng nơi. Mô hình trên thẻ SD không dùng được khi thẻ đã được tháo ra.</string>
+    <string name="model_storage_moving">Đang chuyển mô hình: %1$d%%</string>
+    <string name="model_storage_failed">Không thể chuyển mô hình: %1$s</string>
+    <string name="model_storage_move">Chuyển mô hình</string>
     <string name="browse_download_models">Duyệt và tải xuống các mô hình LLM</string>
     <string name="embedding_model">Nhúng mô hình</string>
     <string name="select_embedding_model">Chọn mô hình nhúng</string>
@@ -898,6 +906,7 @@
     <string name="agent_mcp_termux_not_installed">Cần Termux 0.109 trở lên.</string>
     <string name="agent_mcp_termux_timed_out">Termux không trả về kết quả trước khi hết thời gian chờ.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Bản Termux trên Google Play không hỗ trợ lệnh bên ngoài. Hãy dùng bản Termux từ F-Droid/GitHub cho stdio hoặc chọn HTTP từ xa.</string>
+    <string name="agent_mcp_termux_disabled">Termux đang bị tắt hoặc đã bị Android cho ngủ, nên LLM Hub không thể chạy lệnh trong đó. Hãy mở Termux một lần, hoặc nhấn Mở Cài đặt và bật lại, rồi thử lại.</string>
     <string name="gguf_engine">Công cụ GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (mặc định)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1016,6 +1025,14 @@
     <string name="vibe_codex_syncing">Đang áp dụng thay đổi cho dự án…</string>
     <string name="vibe_codex_step_progress">Bước tác nhân %1$d · lần thử %2$d · đã tạo %3$d ký tự</string>
     <string name="vibe_codex_saved_verified">Đã lưu %1$s và xác minh nội dung.</string>
+    <string name="vibe_claude_code_mode">Chế độ Claude Code</string>
+    <string name="vibe_claude_code_install">Cài Claude Code trong Termux</string>
+    <string name="vibe_claude_code_install_help">Bật lệnh từ ứng dụng bên ngoài trong Termux rồi cài Claude Code trước khi bắt đầu.</string>
+    <string name="vibe_claude_code_installing">Đang cài Claude Code trong Termux…</string>
+    <string name="vibe_claude_code_installed">Đã cài Claude Code. Mô hình cục bộ đã chọn đã sẵn sàng.</string>
+    <string name="vibe_claude_code_failed">Claude Code thất bại. Kiểm tra thiết lập Termux, mô hình cục bộ và nhật ký ứng dụng.</string>
+    <string name="vibe_claude_code_starting">Đang khởi động Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Chế độ Claude Code cần một thư mục trong bộ nhớ trong. Hãy mở một thư mục trước.</string>
     <string name="tts_voice_name">Tên giọng nói</string>
     <string name="tts_voice_rename_failed">Không thể đổi tên giọng nói này. Vui lòng thử lại.</string>
     <!-- Video Generator -->
@@ -1054,6 +1071,7 @@
     <string name="video_generator_generate_failed">Tạo video thất bại: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Đã tải: %1$s trên %2$s</string>
     <string name="video_generator_steps">Số bước</string>
     <string name="video_generator_width">Chiều rộng</string>

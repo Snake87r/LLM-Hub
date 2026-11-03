@@ -118,6 +118,14 @@
     <string name="information">מידע</string>
     <string name="source_code_section">קוד מקור</string>
     <string name="download_models">הורד מודלים</string>
+    <string name="model_storage_title">אחסון מודלים</string>
+    <string name="model_storage_internal">אחסון פנימי</string>
+    <string name="model_storage_sd_card">כרטיס SD</string>
+    <string name="model_storage_free">%1$s פנויים</string>
+    <string name="model_storage_note">המודלים שלך תופסים %1$s. הם מועברים יחד, והורדות חדשות נשמרות באותו מקום. מודלים בכרטיס ה-SD אינם זמינים כל עוד הכרטיס הוצא.</string>
+    <string name="model_storage_moving">מעביר מודלים: %1$d%%</string>
+    <string name="model_storage_failed">לא ניתן להעביר את המודלים: %1$s</string>
+    <string name="model_storage_move">העברת מודלים</string>
     <string name="browse_download_models">עיין והורד מודלי LLM</string>
     <string name="embedding_model">מודל אימבדינג</string>
     <string name="select_embedding_model">בחר מודל אימבדינג</string>
@@ -990,6 +998,7 @@
     <string name="agent_mcp_termux_not_installed">נדרשת Termux בגרסה 0.109 ומעלה.</string>
     <string name="agent_mcp_termux_timed_out">Termux לא החזירה תוצאה לפני תום הזמן.</string>
     <string name="agent_mcp_termux_run_command_unavailable">גרסת Termux מ‑Google Play אינה תומכת בפקודות חיצוניות. עבור stdio יש להשתמש בגרסת Termux מ‑F-Droid/GitHub או לבחור HTTP מרוחק.</string>
+    <string name="agent_mcp_termux_disabled">‏Termux כבוי או ש-Android העביר אותו למצב שינה, ולכן LLM Hub לא יכול להריץ בו פקודות. פתחו את Termux פעם אחת, או הקישו על פתיחת ההגדרות והפעילו אותו מחדש, ואז נסו שוב.</string>
     <string name="gguf_engine">מנוע GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (ברירת מחדל)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1108,6 +1117,14 @@
     <string name="vibe_codex_syncing">מחיל שינויים בפרויקט…</string>
     <string name="vibe_codex_step_progress">שלב סוכן %1$d · ניסיון %2$d · נוצרו %3$d תווים</string>
     <string name="vibe_codex_saved_verified">%1$s נשמר והתוכן שלו אומת.</string>
+    <string name="vibe_claude_code_mode">מצב Claude Code</string>
+    <string name="vibe_claude_code_install">התקנת Claude Code ב-Termux</string>
+    <string name="vibe_claude_code_install_help">יש להפעיל פקודות מיישומים חיצוניים ב-Termux ולהתקין את Claude Code לפני ההתחלה.</string>
+    <string name="vibe_claude_code_installing">מתקין את Claude Code ב-Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code מותקן. המודל המקומי שבחרת מוכן לשימוש.</string>
+    <string name="vibe_claude_code_failed">Claude Code נכשל. בדוק את הגדרות Termux, המודל המקומי ויומני היישום.</string>
+    <string name="vibe_claude_code_starting">מפעיל את Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">מצב Claude Code צריך תיקייה באחסון הפנימי. פתחו תיקייה קודם.</string>
     <string name="tts_voice_name">שם הקול</string>
     <string name="tts_voice_rename_failed">לא ניתן לשנות את שם הקול הזה. נסו שוב.</string>
     <!-- Video Generator -->
@@ -1146,6 +1163,7 @@
     <string name="video_generator_generate_failed">יצירת הווידאו נכשלה: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">נטען: %1$s על %2$s</string>
     <string name="video_generator_steps">שלבים</string>
     <string name="video_generator_width">רוחב</string>

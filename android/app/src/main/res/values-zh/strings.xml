@@ -119,6 +119,14 @@
     <string name="information">信息</string>
     <string name="source_code_section">源代码</string>
     <string name="download_models">下载模型</string>
+    <string name="model_storage_title">模型存储位置</string>
+    <string name="model_storage_internal">内部存储</string>
+    <string name="model_storage_sd_card">SD 卡</string>
+    <string name="model_storage_free">可用 %1$s</string>
+    <string name="model_storage_note">你的模型占用 %1$s。它们会一起移动，新的下载也会保存到同一位置。取出 SD 卡时，卡上的模型将不可用。</string>
+    <string name="model_storage_moving">正在移动模型：%1$d%%</string>
+    <string name="model_storage_failed">无法移动模型：%1$s</string>
+    <string name="model_storage_move">移动模型</string>
     <string name="browse_download_models">浏览和下载 LLM 模型</string>
     <string name="embedding_model">嵌入模型</string>
     <string name="select_embedding_model">选择嵌入模型</string>
@@ -999,6 +1007,7 @@
     <string name="agent_mcp_termux_not_installed">需要 Termux 0.109 或更高版本。</string>
     <string name="agent_mcp_termux_timed_out">Termux 在超时前未返回结果。</string>
     <string name="agent_mcp_termux_run_command_unavailable">Google Play 版 Termux 不支持外部命令。若要使用 stdio，请安装 F-Droid/GitHub 版 Termux，或选择远程 HTTP。</string>
+    <string name="agent_mcp_termux_disabled">Termux 已被关闭或被 Android 置于休眠状态，因此 LLM Hub 无法在其中运行命令。请打开一次 Termux，或点按“打开设置”重新启用它，然后再试一次。</string>
     <string name="gguf_engine">GGUF 引擎</string>
     <string name="gguf_engine_geniex_default">GenieX（默认）</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1117,6 +1126,14 @@
     <string name="vibe_codex_syncing">正在应用项目更改…</string>
     <string name="vibe_codex_step_progress">代理步骤 %1$d · 第 %2$d 次尝试 · 已生成 %3$d 个字符</string>
     <string name="vibe_codex_saved_verified">已保存 %1$s 并验证其内容。</string>
+    <string name="vibe_claude_code_mode">Claude Code 模式</string>
+    <string name="vibe_claude_code_install">在 Termux 中安装 Claude Code</string>
+    <string name="vibe_claude_code_install_help">在 Termux 中启用外部应用命令，并在开始前安装 Claude Code。</string>
+    <string name="vibe_claude_code_installing">正在 Termux 中安装 Claude Code…</string>
+    <string name="vibe_claude_code_installed">Claude Code 已安装。你选择的本地模型已可使用。</string>
+    <string name="vibe_claude_code_failed">Claude Code 运行失败。请检查 Termux 设置、本地模型和应用日志。</string>
+    <string name="vibe_claude_code_starting">正在启动 Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">Claude Code 模式需要内部存储中的文件夹。请先打开一个文件夹。</string>
     <string name="tts_voice_name">声音名称</string>
     <string name="tts_voice_rename_failed">无法重命名此声音。请重试。</string>
     <!-- Video Generator -->
@@ -1155,6 +1172,7 @@
     <string name="video_generator_generate_failed">视频生成失败：%1$s</string>
     <string name="video_generator_backend_npu">NPU（高通 Hexagon）</string>
     <string name="video_generator_backend_gpu">GPU（Vulkan）</string>
+    <string name="video_generator_backend_gpu_opencl">GPU（OpenCL）</string>
     <string name="video_generator_loaded_status">已加载：%1$s（%2$s）</string>
     <string name="video_generator_steps">步数</string>
     <string name="video_generator_width">宽度</string>

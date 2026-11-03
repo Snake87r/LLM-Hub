@@ -65,6 +65,9 @@ internal open class SdCppLtxVideoRuntime(
                 android.system.Os.setenv("SD_DUMP_LATENT_PATH", File(context.cacheDir, "ltxv_latent.raw").absolutePath, true)
             }
             SdCppNative.ensureLoaded()
+            // ggml-opencl caches compiled kernels under TMPDIR, which Android apps do not always have
+            // (Galaxy A73: "/data/local/tmp", not writable), and then recompiles them on every load.
+            android.system.Os.setenv("GGML_OPENCL_KERNEL_CACHE_DIR", File(context.cacheDir, "ggml-cl-cache").absolutePath, false)
             val files = modelDir.listFiles()?.filter { it.length() > 0 } ?: emptyList()
             val t5 = files.firstOrNull { it.name.endsWith(".gguf") && it.name.contains("t5", ignoreCase = true) }
                 ?: error("T5 text encoder file is missing in ${modelDir.name}")
@@ -81,14 +84,23 @@ internal open class SdCppLtxVideoRuntime(
             // fail to build compute pipelines for its K-quant matmuls.
             // Debug builds: `touch files/debug_vae_vulkan` decodes on the GPU in NPU mode (Adreno test).
             val vaeOnGpu = com.llmhub.llmhub.BuildConfig.DEBUG && File(context.filesDir, "debug_vae_vulkan").exists()
-            val gpus = if (npu || backend != VideoGenBackend.GPU) "" else SdCppNative.nativeListDevices()
-            // PowerVR (Tensor G5/G6) runs the transformer but its Vulkan driver rejects the VAE decoder's
-            // largest conv weights, which ggml cannot move off the GPU once allocated: decode on the CPU.
-            val vaeDevice = if (gpus.contains("PowerVR", ignoreCase = true)) "CPU" else "Vulkan0"
             val device = when {
                 npu && vaeOnGpu -> "te=CPU,diffusion=CPU,vae=Vulkan0"
                 npu -> "CPU"
-                backend == VideoGenBackend.GPU -> "te=CPU,diffusion=Vulkan0,vae=$vaeDevice"
+                backend == VideoGenBackend.GPU -> {
+                    val gpus = SdCppNative.nativeListDevices()
+                    // Adreno: ggml's OpenCL backend (its Vulkan driver crashes on ggml's shaders); else Vulkan.
+                    val gpu = if (VideoGenEngine.gpuUsesOpenCl()) {
+                        gpus.lineSequence().map { it.substringBefore('\t') }.firstOrNull { it.contains("OpenCL", ignoreCase = true) }
+                            ?: error("No OpenCL GPU found on this device")
+                    } else {
+                        "Vulkan0"
+                    }
+                    // PowerVR (Tensor G5/G6) runs the transformer but its Vulkan driver rejects the VAE decoder's
+                    // largest conv weights, which ggml cannot move off the GPU once allocated: decode on the CPU.
+                    val vaeDevice = if (gpus.contains("PowerVR", ignoreCase = true)) "CPU" else gpu
+                    "te=CPU,diffusion=$gpu,vae=$vaeDevice"
+                }
                 else -> "CPU"
             }
             val modelArgs = if (npu) {

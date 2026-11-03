@@ -116,6 +116,14 @@
     <string name="information">情報</string>
     <string name="source_code_section">ソースコード</string>
     <string name="download_models">モデルをダウンロード</string>
+    <string name="model_storage_title">モデルの保存先</string>
+    <string name="model_storage_internal">内部ストレージ</string>
+    <string name="model_storage_sd_card">SDカード</string>
+    <string name="model_storage_free">空き %1$s</string>
+    <string name="model_storage_note">モデルは %1$s を使用しています。まとめて移動され、新しいダウンロードも同じ場所に保存されます。SDカードを取り外している間、カード上のモデルは使えません。</string>
+    <string name="model_storage_moving">モデルを移動中: %1$d%%</string>
+    <string name="model_storage_failed">モデルを移動できませんでした: %1$s</string>
+    <string name="model_storage_move">モデルを移動</string>
     <string name="browse_download_models">LLMモデルを閲覧してダウンロード</string>
     <string name="embedding_model">埋め込みモデル</string>
     <string name="select_embedding_model">埋め込みモデルを選択</string>
@@ -988,6 +996,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 以降が必要です。</string>
     <string name="agent_mcp_termux_timed_out">タイムアウトまでに Termux から結果が返されませんでした。</string>
     <string name="agent_mcp_termux_run_command_unavailable">Google Play 版の Termux は外部コマンドに対応していません。stdio には F-Droid/GitHub 版の Termux を使用するか、リモート HTTP を選択してください。</string>
+    <string name="agent_mcp_termux_disabled">Termux がオフになっているか、Android によってスリープ状態にされているため、LLM Hub からコマンドを実行できません。Termux を一度開くか、［設定を開く］から有効に戻してから、もう一度お試しください。</string>
     <string name="gguf_engine">GGUF エンジン</string>
     <string name="gguf_engine_geniex_default">GenieX（デフォルト）</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1106,6 +1115,14 @@
     <string name="vibe_codex_syncing">プロジェクトの変更を適用中…</string>
     <string name="vibe_codex_step_progress">エージェントのステップ %1$d · 試行 %2$d · %3$d 文字生成済み</string>
     <string name="vibe_codex_saved_verified">%1$s を保存し、内容を確認しました。</string>
+    <string name="vibe_claude_code_mode">Claude Codeモード</string>
+    <string name="vibe_claude_code_install">TermuxにClaude Codeをインストール</string>
+    <string name="vibe_claude_code_install_help">Termuxで外部アプリのコマンドを有効にし、開始前にClaude Codeをインストールしてください。</string>
+    <string name="vibe_claude_code_installing">TermuxにClaude Codeをインストール中…</string>
+    <string name="vibe_claude_code_installed">Claude Codeをインストールしました。選択したローカルモデルを使用できます。</string>
+    <string name="vibe_claude_code_failed">Claude Codeに失敗しました。Termuxの設定、ローカルモデル、アプリのログを確認してください。</string>
+    <string name="vibe_claude_code_starting">Claude Codeを起動中…</string>
+    <string name="vibe_claude_code_folder_required">Claude Codeモードには内部ストレージのフォルダが必要です。先にフォルダを開いてください。</string>
     <string name="tts_voice_name">音声の名前</string>
     <string name="tts_voice_rename_failed">この音声の名前を変更できませんでした。もう一度お試しください。</string>
     <!-- Video Generator -->
@@ -1144,6 +1161,7 @@
     <string name="video_generator_generate_failed">動画の生成に失敗しました: %1$s</string>
     <string name="video_generator_backend_npu">NPU（Qualcomm Hexagon）</string>
     <string name="video_generator_backend_gpu">GPU（Vulkan）</string>
+    <string name="video_generator_backend_gpu_opencl">GPU（OpenCL）</string>
     <string name="video_generator_loaded_status">読み込み済み: %1$s（%2$s）</string>
     <string name="video_generator_steps">ステップ数</string>
     <string name="video_generator_width">幅</string>

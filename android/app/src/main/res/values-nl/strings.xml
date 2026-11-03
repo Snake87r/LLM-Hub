@@ -107,6 +107,14 @@
     <string name="information">Informatie</string>
     <string name="source_code_section">Broncode</string>
     <string name="download_models">Modellen downloaden</string>
+    <string name="model_storage_title">Opslag van modellen</string>
+    <string name="model_storage_internal">Interne opslag</string>
+    <string name="model_storage_sd_card">SD-kaart</string>
+    <string name="model_storage_free">%1$s vrij</string>
+    <string name="model_storage_note">Je modellen gebruiken %1$s. Ze worden samen verplaatst en nieuwe downloads komen op dezelfde plek. Modellen op de SD-kaart zijn niet beschikbaar zolang de kaart is verwijderd.</string>
+    <string name="model_storage_moving">Modellen verplaatsen: %1$d%%</string>
+    <string name="model_storage_failed">De modellen konden niet worden verplaatst: %1$s</string>
+    <string name="model_storage_move">Modellen verplaatsen</string>
     <string name="browse_download_models">Blader en download LLM-modellen</string>
     <string name="embedding_model">Inbeddingsmodel</string>
     <string name="select_embedding_model">Selecteer Inbeddingsmodel</string>
@@ -898,6 +906,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 of nieuwer is vereist.</string>
     <string name="agent_mcp_termux_timed_out">Termux heeft vóór de time-out geen resultaat teruggestuurd.</string>
     <string name="agent_mcp_termux_run_command_unavailable">Deze Google Play-versie van Termux ondersteunt geen externe opdrachten. Gebruik voor stdio de F-Droid/GitHub-versie van Termux of selecteer Externe HTTP.</string>
+    <string name="agent_mcp_termux_disabled">Termux staat uit of is door Android in de slaapstand gezet, dus LLM Hub kan er geen opdrachten in uitvoeren. Open Termux één keer, of tik op Instellingen openen en zet het weer aan. Probeer het daarna opnieuw.</string>
     <string name="gguf_engine">GGUF-engine</string>
     <string name="gguf_engine_geniex_default">GenieX (standaard)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1016,6 +1025,14 @@
     <string name="vibe_codex_syncing">Projectwijzigingen toepassen…</string>
     <string name="vibe_codex_step_progress">Agentstap %1$d · poging %2$d · %3$d tekens gegenereerd</string>
     <string name="vibe_codex_saved_verified">%1$s opgeslagen en de inhoud gecontroleerd.</string>
+    <string name="vibe_claude_code_mode">Claude Code-modus</string>
+    <string name="vibe_claude_code_install">Claude Code installeren in Termux</string>
+    <string name="vibe_claude_code_install_help">Schakel opdrachten van externe apps in Termux in en installeer Claude Code voordat je begint.</string>
+    <string name="vibe_claude_code_installing">Claude Code wordt geïnstalleerd in Termux…</string>
+    <string name="vibe_claude_code_installed">Claude Code is geïnstalleerd. Je geselecteerde lokale model is klaar voor gebruik.</string>
+    <string name="vibe_claude_code_failed">Claude Code is mislukt. Controleer de Termux-instellingen, het lokale model en de app-logboeken.</string>
+    <string name="vibe_claude_code_starting">Claude Code starten…</string>
+    <string name="vibe_claude_code_folder_required">De Claude Code-modus heeft een map in de interne opslag nodig. Open eerst een map.</string>
     <string name="tts_voice_name">Stemnaam</string>
     <string name="tts_voice_rename_failed">Deze stem kon niet worden hernoemd. Probeer het opnieuw.</string>
     <!-- Video Generator -->
@@ -1054,6 +1071,7 @@
     <string name="video_generator_generate_failed">Videogeneratie mislukt: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">Geladen: %1$s op %2$s</string>
     <string name="video_generator_steps">Stappen</string>
     <string name="video_generator_width">Breedte</string>

@@ -131,6 +131,14 @@
     <string name="information">जानकारी</string>
     <string name="source_code_section">स्रोत कोड</string>
     <string name="download_models">मॉडल डाउनलोड करें</string>
+    <string name="model_storage_title">मॉडल स्टोरेज</string>
+    <string name="model_storage_internal">इंटरनल स्टोरेज</string>
+    <string name="model_storage_sd_card">SD कार्ड</string>
+    <string name="model_storage_free">%1$s खाली</string>
+    <string name="model_storage_note">आपके मॉडल %1$s जगह लेते हैं। वे एक साथ ले जाए जाते हैं और नए डाउनलोड भी वहीं जाते हैं। SD कार्ड निकाले जाने पर उस पर रखे मॉडल उपलब्ध नहीं होते।</string>
+    <string name="model_storage_moving">मॉडल ले जाए जा रहे हैं: %1$d%%</string>
+    <string name="model_storage_failed">मॉडल नहीं ले जाए जा सके: %1$s</string>
+    <string name="model_storage_move">मॉडल ले जाएं</string>
     <string name="browse_download_models">LLM मॉडल ब्राउज़ करें और डाउनलोड करें</string>
     <string name="embedding_model">एम्बेडिंग मॉडल</string>
     <string name="select_embedding_model">एम्बेडिंग मॉडल चुनें</string>
@@ -1017,6 +1025,7 @@
     <string name="agent_mcp_termux_not_installed">Termux 0.109 या नया संस्करण आवश्यक है।</string>
     <string name="agent_mcp_termux_timed_out">समय-सीमा से पहले Termux ने कोई परिणाम नहीं लौटाया।</string>
     <string name="agent_mcp_termux_run_command_unavailable">Google Play वाला Termux बिल्ड बाहरी कमांड का समर्थन नहीं करता। stdio के लिए F-Droid/GitHub वाला Termux इस्तेमाल करें या रिमोट HTTP चुनें।</string>
+    <string name="agent_mcp_termux_disabled">Termux बंद है या Android ने उसे स्लीप में डाल दिया है, इसलिए LLM Hub उसमें कमांड नहीं चला सकता। Termux को एक बार खोलें, या सेटिंग्स खोलें पर टैप करके उसे फिर से चालू करें, फिर दोबारा कोशिश करें।</string>
     <string name="gguf_engine">GGUF इंजन</string>
     <string name="gguf_engine_geniex_default">GenieX (डिफ़ॉल्ट)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1135,6 +1144,14 @@
     <string name="vibe_codex_syncing">प्रोजेक्ट में बदलाव लागू हो रहे हैं…</string>
     <string name="vibe_codex_step_progress">एजेंट चरण %1$d · प्रयास %2$d · %3$d अक्षर उत्पन्न हुए</string>
     <string name="vibe_codex_saved_verified">%1$s सहेजा गया और उसकी सामग्री की पुष्टि की गई।</string>
+    <string name="vibe_claude_code_mode">Claude Code मोड</string>
+    <string name="vibe_claude_code_install">Termux में Claude Code इंस्टॉल करें</string>
+    <string name="vibe_claude_code_install_help">Termux में बाहरी ऐप के कमांड सक्षम करें, फिर शुरू करने से पहले Claude Code इंस्टॉल करें।</string>
+    <string name="vibe_claude_code_installing">Termux में Claude Code इंस्टॉल हो रहा है…</string>
+    <string name="vibe_claude_code_installed">Claude Code इंस्टॉल हो गया है। आपका चुना हुआ स्थानीय मॉडल तैयार है।</string>
+    <string name="vibe_claude_code_failed">Claude Code विफल हुआ। Termux सेटअप, स्थानीय मॉडल और ऐप लॉग जाँचें।</string>
+    <string name="vibe_claude_code_starting">Claude Code शुरू हो रहा है…</string>
+    <string name="vibe_claude_code_folder_required">Claude Code मोड को आंतरिक स्टोरेज में एक फ़ोल्डर चाहिए। पहले एक फ़ोल्डर खोलें।</string>
     <string name="tts_voice_name">आवाज़ का नाम</string>
     <string name="tts_voice_rename_failed">इस आवाज़ का नाम नहीं बदला जा सका। फिर से कोशिश करें।</string>
     <!-- Video Generator -->
@@ -1173,6 +1190,7 @@
     <string name="video_generator_generate_failed">वीडियो जनरेशन विफल रहा: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">लोड किया गया: %1$s (%2$s)</string>
     <string name="video_generator_steps">चरण</string>
     <string name="video_generator_width">चौड़ाई</string>

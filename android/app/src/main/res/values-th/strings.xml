@@ -107,6 +107,14 @@
     <string name="information">ข้อมูล</string>
     <string name="source_code_section">ซอร์สโค้ด</string>
     <string name="download_models">ดาวน์โหลดโมเดล</string>
+    <string name="model_storage_title">ที่เก็บโมเดล</string>
+    <string name="model_storage_internal">ที่เก็บข้อมูลภายใน</string>
+    <string name="model_storage_sd_card">การ์ด SD</string>
+    <string name="model_storage_free">ว่าง %1$s</string>
+    <string name="model_storage_note">โมเดลของคุณใช้พื้นที่ %1$s โมเดลจะถูกย้ายไปพร้อมกัน และการดาวน์โหลดใหม่จะบันทึกไว้ที่เดียวกัน โมเดลบนการ์ด SD จะใช้ไม่ได้ขณะถอดการ์ดออก</string>
+    <string name="model_storage_moving">กำลังย้ายโมเดล: %1$d%%</string>
+    <string name="model_storage_failed">ย้ายโมเดลไม่สำเร็จ: %1$s</string>
+    <string name="model_storage_move">ย้ายโมเดล</string>
     <string name="browse_download_models">เรียกดูและดาวน์โหลดโมเดล LLM</string>
     <string name="embedding_model">การฝังโมเดล</string>
     <string name="select_embedding_model">เลือกโมเดลการฝัง</string>
@@ -898,6 +906,7 @@
     <string name="agent_mcp_termux_not_installed">ต้องใช้ Termux 0.109 หรือใหม่กว่า</string>
     <string name="agent_mcp_termux_timed_out">Termux ไม่ส่งผลลัพธ์กลับมาก่อนหมดเวลา</string>
     <string name="agent_mcp_termux_run_command_unavailable">Termux เวอร์ชัน Google Play ไม่รองรับคำสั่งจากภายนอก โปรดใช้ Termux เวอร์ชัน F-Droid/GitHub สำหรับ stdio หรือเลือก HTTP ระยะไกล</string>
+    <string name="agent_mcp_termux_disabled">Termux ถูกปิดอยู่หรือ Android สั่งให้เข้าสู่โหมดพัก LLM Hub จึงเรียกใช้คำสั่งใน Termux ไม่ได้ เปิด Termux หนึ่งครั้ง หรือแตะเปิดการตั้งค่าแล้วเปิดใช้งานอีกครั้ง จากนั้นลองใหม่</string>
     <string name="gguf_engine">เอนจิน GGUF</string>
     <string name="gguf_engine_geniex_default">GenieX (ค่าเริ่มต้น)</string>
     <string name="gguf_engine_llama_cpp">llama.cpp</string>
@@ -1016,6 +1025,14 @@
     <string name="vibe_codex_syncing">กำลังนำการเปลี่ยนแปลงไปใช้กับโปรเจ็กต์…</string>
     <string name="vibe_codex_step_progress">ขั้นตอนเอเจนต์ %1$d · ครั้งที่ %2$d · สร้างแล้ว %3$d อักขระ</string>
     <string name="vibe_codex_saved_verified">บันทึก %1$s และตรวจสอบเนื้อหาแล้ว</string>
+    <string name="vibe_claude_code_mode">โหมด Claude Code</string>
+    <string name="vibe_claude_code_install">ติดตั้ง Claude Code ใน Termux</string>
+    <string name="vibe_claude_code_install_help">เปิดใช้คำสั่งจากแอปภายนอกใน Termux แล้วติดตั้ง Claude Code ก่อนเริ่มต้น</string>
+    <string name="vibe_claude_code_installing">กำลังติดตั้ง Claude Code ใน Termux…</string>
+    <string name="vibe_claude_code_installed">ติดตั้ง Claude Code แล้ว โมเดลในเครื่องที่คุณเลือกพร้อมใช้งาน</string>
+    <string name="vibe_claude_code_failed">Claude Code ทำงานไม่สำเร็จ ตรวจสอบการตั้งค่า Termux โมเดลในเครื่อง และบันทึกของแอป</string>
+    <string name="vibe_claude_code_starting">กำลังเริ่ม Claude Code…</string>
+    <string name="vibe_claude_code_folder_required">โหมด Claude Code ต้องใช้โฟลเดอร์ในพื้นที่เก็บข้อมูลภายใน เปิดโฟลเดอร์ก่อน</string>
     <string name="tts_voice_name">ชื่อเสียง</string>
     <string name="tts_voice_rename_failed">ไม่สามารถเปลี่ยนชื่อเสียงนี้ได้ โปรดลองอีกครั้ง</string>
     <!-- Video Generator -->
@@ -1054,6 +1071,7 @@
     <string name="video_generator_generate_failed">สร้างวิดีโอไม่สำเร็จ: %1$s</string>
     <string name="video_generator_backend_npu">NPU (Qualcomm Hexagon)</string>
     <string name="video_generator_backend_gpu">GPU (Vulkan)</string>
+    <string name="video_generator_backend_gpu_opencl">GPU (OpenCL)</string>
     <string name="video_generator_loaded_status">โหลดแล้ว: %1$s บน %2$s</string>
     <string name="video_generator_steps">จำนวนขั้นตอน</string>
     <string name="video_generator_width">ความกว้าง</string>

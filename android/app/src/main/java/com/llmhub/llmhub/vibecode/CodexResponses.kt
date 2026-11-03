@@ -21,8 +21,7 @@ internal object CodexResponses {
             if (instructions.isNotEmpty()) {
                 append("Instructions:\n").append(instructions).append("\n\n")
             }
-            val running = CodexProgressGuard.latestResult(request)?.second?.contains("Process running with session ID") == true
-            append("Available tools:\n").append(toolManifest(toolsArray, running).toString()).append("\n\n")
+            append("Available tools:\n").append(offeredTools(request).toString()).append("\n\n")
             tools(toolsArray).entries.firstOrNull { isShellTool(it.key) }?.let { (name, _) ->
                 append("Use ").append(name).append(" for reading files and running checks. Use replace_in_file for exact edits and write_file for complete files. Example:\n")
                 append(JSONObject().put("text", "Applying a targeted edit").put("tool_calls", JSONArray().put(JSONObject()
@@ -45,6 +44,7 @@ internal object CodexResponses {
                 If a command failed, change the command to address its actual error.
                 For HTML, URLs, quotes and multiline changes, use replace_in_file or write_file with literal text. Do not put them in sed substitutions or shell quoting.
                 Fix the user's requested change, not unrelated issues from earlier assistant reasoning.
+                Write complete, working code with real content: no placeholders or stubs.
                 Use relative paths in the current project. Use the exact argument names in the tool schema.
                 For a small typo, perform a targeted replacement rather than rewriting the entire file.
                 For other edits, replace only the smallest necessary fragment; do not copy the whole existing file into old_text.
@@ -67,6 +67,12 @@ internal object CodexResponses {
                 append("\n\nMost recent executed tool: ").append(executedCall(call)).append("\n")
                 append("Most recent tool result (use this to choose the NEXT action):\n").append(result)
                 append("\nThe tool above already ran. Use its result; do not restart the same inspection.\n")
+                val written = CodexProgressGuard.command(call)?.let(CodexFileEdits::writtenFile)
+                if (written != null && result.contains("Process exited with code 0")) {
+                    append("\nThe write succeeded: ").append(written.first).append(" now contains exactly the content you supplied. ")
+                    append("Do not write it again. If that content fulfils the request, finish with tool_calls: []; ")
+                    append("otherwise make only the missing change.\n")
+                }
                 if (emptyFileRead(call, result)) {
                     append("\nThe file read succeeded: the file exists and contains zero bytes. There is no existing code to inspect or replace. ")
                     append("Your NEXT action is write_file with the same file path and complete new content implementing the user's request. ")
@@ -83,6 +89,10 @@ internal object CodexResponses {
             result.contains("Process exited with code 0") && result.contains("Output:") &&
             result.substringAfter("Output:").isBlank()
     }
+
+    /** The tools shown to the model for this request; [CodexGrammar] allows exactly these. */
+    fun offeredTools(request: JSONObject): JSONArray = toolManifest(request.optJSONArray("tools") ?: JSONArray(),
+        CodexProgressGuard.latestResult(request)?.second?.contains("Process running with session ID") == true)
 
     private fun toolManifest(array: JSONArray, running: Boolean): JSONArray = JSONArray().apply {
         for ((name, spec) in tools(array)) {
@@ -153,16 +163,32 @@ internal object CodexResponses {
             condensed.put(item)
         }
         val recovery = JSONObject(request.toString()).put("input", condensed)
-        return prompt(recovery) + "\n\nRecovery instruction: ${error.message?.take(2000)}\n" +
+        val latestFailed = CodexProgressGuard.latestResult(request)?.second
+            ?.let { it.contains("Process exited with code") && !it.contains("Process exited with code 0") } == true
+        val next = if (latestId != null && latestFailed) {
+            // Offering to finish after a failure makes small models end with an account of what went wrong.
+            "The latest command failed and changed nothing; it is shown above. Do not finish yet. Call a different tool " +
+                "that fixes its actual error. For a missing or empty file, use write_file with the complete content. "
+        } else if (latestId != null) {
             "The earlier commands and edits listed above already executed. You are continuing after them. " +
-            "Use the latest result to determine what remains. If it verifies the requested change, finish now with " +
-            "{\"text\":\"concise factual result\",\"tool_calls\":[]}. Otherwise call a different necessary tool. " +
-            "Your rejected tool calls were NOT executed. Return complete valid JSON with text and tool_calls."
+                "Use the latest result to determine what remains. If it verifies the requested change, finish now with " +
+                "{\"text\":\"concise factual result\",\"tool_calls\":[]}. Otherwise call a different necessary tool. "
+        } else {
+            // Inviting an empty tool_calls list here makes small models claim work they never started.
+            "No tool has run yet for the latest request: nothing has been read, written or verified, so do not claim " +
+                "progress and do not finish. Put the next necessary tool in tool_calls, for example " +
+                "{\"text\":\"Writing the file\",\"tool_calls\":[{\"name\":\"write_file\",\"arguments\":" +
+                "{\"path\":\"path/to/file\",\"content\":\"complete file content\"}}]}. "
+        }
+        return prompt(recovery) + "\n\nRecovery instruction: ${error.message?.take(2000)}\n" + next +
+            "Your rejected tool calls were NOT executed. Return complete valid JSON with text and tool_calls, " +
+            "closing every { and [."
     }
 
     private fun formatConversationInput(inputObj: Any?, superseded: Set<String> = emptySet()): String {
         if (inputObj !is JSONArray) return inputObj?.toString().orEmpty()
         val sb = StringBuilder()
+        val calls = mutableMapOf<String, JSONObject>()
         for (i in 0 until inputObj.length()) {
             val item = inputObj.optJSONObject(i)
             if (item == null) {
@@ -187,14 +213,15 @@ internal object CodexResponses {
                     } else item.optString("content")
                     if (text.isNotBlank()) sb.append("$role: $text\n\n")
                 }
-                "function_call" -> {
-                    sb.append("assistant: Tool call already submitted: ${executedCall(item)}\n\n")
-                }
+                // Executed calls appear with their results, not as assistant turns: small models copy an assistant
+                // line such as "Tool call already submitted: write_file(...)" as their next reply and repeat old calls.
+                "function_call" -> calls[item.optString("call_id")] = item
                 "function_call_output" -> {
                     val output = if (item.optString("call_id") in superseded)
                         "Earlier inspection superseded by a successful edit or later read. Use the current file contents, not this old snapshot."
                     else item.optString("output")
-                    sb.append("user: Executed tool result: $output\n\n")
+                    val call = calls[item.optString("call_id")]?.let { " for ${executedCall(it)}" }.orEmpty()
+                    sb.append("user: Executed tool result$call: $output\n\n")
                 }
                 else -> {
                     val text = item.optString("text")
@@ -261,6 +288,49 @@ internal object CodexResponses {
         return after.substring(0, marker).trim() to after.substring(marker).trim()
     }
 
+    /**
+     * Whether streamed output already holds a whole reply object: its first top-level JSON object (after any thinking)
+     * has closed. Anything a model generates after that is noise, and backends without a grammar (LiteRT-LM) can keep
+     * going until the context is full.
+     */
+    fun replyComplete(raw: String): Boolean {
+        if (raw.contains(SENTINEL_THINK) && !raw.contains(SENTINEL_ENDTHINK)) return false
+        if (raw.contains("<think>") && !raw.contains("</think>")) return false
+        val text = stripThinking(raw)
+        var depth = 0
+        var inString = false
+        var escape = false
+        for (c in text.substring(text.indexOf('{').takeIf { it >= 0 } ?: return false)) {
+            if (inString) {
+                if (escape) escape = false else if (c == '\\') escape = true else if (c == '"') inString = false
+                continue
+            }
+            when (c) {
+                '"' -> inString = true
+                '{', '[' -> depth++
+                '}', ']' -> if (--depth == 0) return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Whether streamed output has collapsed into repetition, as small models do in long contexts (for example hundreds
+     * of lines of quotes and spaces): its last 512 characters repeat a short pattern or hold at most four distinct
+     * non-space characters. Code and prose never look like that, so generation can stop and be retried.
+     */
+    fun degenerate(raw: String): Boolean {
+        if (raw.length < 1024) return false
+        val tail = raw.takeLast(512)
+        if (tail.filterNot { it.isWhitespace() }.toSet().size <= 4) return true
+        return (1..64).any { period ->
+            (period until tail.length).count { tail[it] == tail[it - period] } >= (tail.length - period) * 97 / 100
+        }
+    }
+
+    /** The reply object in a model's raw output (thinking removed, small JSON slips repaired), or null. */
+    fun replyJson(raw: String): JSONObject? = extractJson(stripThinking(raw))?.let { runCatching { JSONObject(it) }.getOrNull() }
+
     private fun extractJson(text: String): String? {
         val trimmed = text.trim()
         // 1. Try markdown code fences first: ```json ... ```
@@ -294,7 +364,84 @@ internal object CodexResponses {
                 }
             }
         }
-        return null
+        return repairJson(trimmed.substring(start))
+    }
+
+    /**
+     * Small models often drop a closing brace or bracket, e.g. `...}]}` for `...}}]}`. Insert the missing closers
+     * where a later closer or the end of the reply shows them. A reply that ends inside a string was cut off,
+     * so it is not repaired: closing it would save a truncated file.
+     */
+    private fun repairJson(text: String): String? {
+        val repaired = StringBuilder()
+        val open = ArrayDeque<Char>()
+        var inString = false
+        var escape = false
+        for ((index, c) in text.withIndex()) {
+            repaired.append(c)
+            if (inString) {
+                if (escape) escape = false
+                else if (c == '\\') escape = true
+                else if (c == '"') inString = false
+                continue
+            }
+            // A key missing its opening quote, as in `,new_text":"..."`: the closing quote is already there.
+            if ((c.isLetter() || c == '_') && open.lastOrNull() == '}' &&
+                repaired.dropLast(1).trimEnd().lastOrNull().let { it == ',' || it == '{' }) {
+                repaired.insert(repaired.length - 1, '"')
+                inString = true
+                continue
+            }
+            when (c) {
+                '"' -> {
+                    inString = true
+                    // An object key while an array is open, as in `[{...},"summary":"..."}`: the array ended before it.
+                    if (open.lastOrNull() == ']' && isObjectKey(text, index)) {
+                        repaired.setLength(repaired.length - 1)
+                        val comma = repaired.trimEnd().endsWith(',')
+                        repaired.setLength(repaired.trimEnd().length)
+                        if (comma) repaired.setLength(repaired.length - 1)
+                        repaired.append(open.removeLast())
+                        if (open.isEmpty()) return null
+                        if (comma) repaired.append(',')
+                        repaired.append('"')
+                    } else if (open.lastOrNull() == '}' && repaired.dropLast(1).trimEnd().lastOrNull() == ':' && isObjectKey(text, index)) {
+                        // A key where a value belongs, as in `{"text": "tool_calls": [...]`: the value was left out.
+                        repaired.setLength(repaired.length - 1)
+                        repaired.append("\"\", \"")
+                    }
+                }
+                '{' -> open.addLast('}')
+                '[' -> open.addLast(']')
+                '}', ']' -> {
+                    repaired.setLength(repaired.length - 1)
+                    while (open.isNotEmpty() && open.last() != c) repaired.append(open.removeLast())
+                    if (open.isEmpty()) return null
+                    repaired.append(open.removeLast())
+                    if (open.isEmpty()) break
+                }
+            }
+        }
+        if (inString) return null
+        while (open.isNotEmpty()) repaired.append(open.removeLast())
+        return repaired.toString().takeIf { runCatching { JSONObject(it) }.isSuccess }
+    }
+
+    /** Whether the string starting at [quote] is followed by a colon, i.e. is an object key. */
+    private fun isObjectKey(text: String, quote: Int): Boolean {
+        var i = quote + 1
+        while (i < text.length) {
+            when (text[i]) {
+                '\\' -> i++
+                '"' -> {
+                    var j = i + 1
+                    while (j < text.length && text[j].isWhitespace()) j++
+                    return j < text.length && text[j] == ':'
+                }
+            }
+            i++
+        }
+        return false
     }
 
     fun cleanToolName(name: String): String {
@@ -309,7 +456,46 @@ internal object CodexResponses {
         return clean
     }
 
+    /**
+     * Gemma 4's native call format, which it falls back to on LiteRT-LM where no grammar holds it to JSON:
+     * `<|tool_call>call:name{key:<|"|>text<|"|>,count:3}<tool_call|>` (the closing tag may be missing).
+     */
+    fun gemmaToolCalls(text: String): Pair<String, JSONArray>? {
+        val quote = "<|\"|>"
+        val starts = Regex("<\\|tool_call>\\s*call:([\\w.\\-]+)\\{").findAll(text).toList()
+        if (starts.isEmpty()) return null
+        val calls = JSONArray()
+        for (start in starts) {
+            // Scan key:value pairs; quoted values may hold braces and commas (CSS, code), so skip over them.
+            val args = JSONObject()
+            var i = start.range.last + 1
+            while (i < text.length && text[i] != '}') {
+                val colon = text.indexOf(':', i).takeIf { it >= 0 } ?: break
+                val key = text.substring(i, colon).trim().trim(',').trim()
+                var j = colon + 1
+                val value: Any
+                if (text.startsWith(quote, j)) {
+                    val end = text.indexOf(quote, j + quote.length).takeIf { it >= 0 } ?: text.length
+                    value = text.substring(j + quote.length, end)
+                    j = minOf(text.length, end + quote.length)
+                } else {
+                    var end = j
+                    while (end < text.length && text[end] != ',' && text[end] != '}') end++
+                    val raw = text.substring(j, end).trim()
+                    value = raw.toLongOrNull() ?: raw.toDoubleOrNull() ?: raw.toBooleanStrictOrNull() ?: raw
+                    j = end
+                }
+                if (key.isNotEmpty()) args.put(key, value)
+                while (j < text.length && text[j].isWhitespace()) j++
+                i = if (j < text.length && text[j] == ',') j + 1 else j
+            }
+            calls.put(JSONObject().put("name", start.groupValues[1]).put("arguments", args))
+        }
+        return text.substring(0, starts.first().range.first).trim() to calls
+    }
+
     private fun extractTaggedToolCalls(text: String): Pair<String, JSONArray>? {
+        gemmaToolCalls(text)?.let { return it }
         // 1. Explicit tags: <tool_call>...</tool_call> or <|tool_call_start|>...<|tool_call_end|>
         val tagRegex = Regex("(?s)(?:<\\|tool_call_start\\|>|<tool_call>)(.*?)(?:<\\|tool_call_end\\|>|</tool_call>)")
         val tagMatches = tagRegex.findAll(text).toList()
@@ -474,7 +660,9 @@ internal object CodexResponses {
                 args.remove("sandbox_permissions")
                 args.remove("prefix_rule")
                 if (lowerRaw == "replace_in_file") {
-                    val path = args.getString("path").removePrefix("/cwd/")
+                    // Like write_file: a path into Codex's own home (often glued onto the project folder) means the project file.
+                    var path = args.getString("path").removePrefix("/cwd/")
+                    if (path.contains(".llmhub-codex")) path = path.substringAfterLast('/')
                     val old = args.getString("old_text")
                     args.put("command", CodexFileEdits.replaceCommand(path, old, args.getString("new_text")))
                     listOf("path", "old_text", "new_text").forEach(args::remove)
