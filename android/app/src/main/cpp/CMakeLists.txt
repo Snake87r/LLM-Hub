@@ -8,8 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Keep the baseline ARMv8 CPU runtime for devices without Snapdragon OpenCL/Hexagon.
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+# llama.cpp is built as shared libraries so the CPU backend can be a set of per-chip modules
+# (GGML_CPU_ALL_VARIANTS: ARMv8.0 up to ARMv9.2 with SVE2/SME) that the JNI library picks from at
+# runtime. Every library from this tree is renamed to libllmhub_* below, because the packaged
+# Snapdragon release ships libggml*.so/libllama.so/libmtmd.so under the upstream names and its
+# ggml_backend_load_all_from_path() scan of the native library directory must not find ours.
+set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_COMMON OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -20,9 +24,9 @@ set(LLAMA_BUILD_MTMD ON CACHE BOOL "" FORCE)
 set(MTMD_VIDEO OFF CACHE BOOL "" FORCE)
 set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
-set(GGML_CPU_ARM_ARCH "armv8-a" CACHE STRING "" FORCE)
-set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
-set(GGML_CPU_ALL_VARIANTS OFF CACHE BOOL "" FORCE)
+set(GGML_CPU_ARM_ARCH "" CACHE STRING "" FORCE)
+set(GGML_BACKEND_DL ON CACHE BOOL "" FORCE)
+set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
 set(GGML_KLEIDIAI OFF CACHE BOOL "" FORCE)
@@ -42,7 +46,6 @@ list(GET NDK_GLSLC_CANDIDATES 0 NDK_GLSLC)
 set(Vulkan_GLSLC_EXECUTABLE "${NDK_GLSLC}" CACHE FILEPATH "" FORCE)
 set(Vulkan_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/vulkan-headers" CACHE PATH "" FORCE)
 set(SPIRV-Headers_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "" FORCE)
-set(NDK_SPIRV_HEADERS "${CMAKE_ANDROID_NDK}/sources/third_party/shaderc/third_party/spirv-tools/external/spirv-headers/include")
 
 set(LLAMA_CPP_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../llama.cpp")
 # Every compile command carries the vendored llama.cpp version, so a version bump rebuilds all of
@@ -57,8 +60,14 @@ if(NOT LLMHUB_LLAMA_VERSION)
 endif()
 add_compile_definitions(LLMHUB_LLAMA_SOURCE_VERSION="${LLMHUB_LLAMA_VERSION}")
 add_subdirectory("${LLAMA_CPP_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/llama.cpp")
-target_include_directories(ggml-vulkan PRIVATE "${NDK_SPIRV_HEADERS}")
+# GGML_AVAILABLE_BACKENDS lists the backend modules: ggml-cpu-android_armv8.0_1 ... and ggml-vulkan.
+foreach(llmhub_lib IN LISTS GGML_AVAILABLE_BACKENDS ITEMS ggml-base ggml llama mtmd)
+    if(TARGET ${llmhub_lib})
+        set_target_properties(${llmhub_lib} PROPERTIES OUTPUT_NAME "llmhub_${llmhub_lib}")
+    endif()
+endforeach()
 
+# CPU runtime for every arm64 device. It loads the best libllmhub_ggml-cpu-* variant for the chip.
 add_library(llmhub_llama_cpu SHARED llama_cpp_jni.cpp)
 target_compile_options(llmhub_llama_cpu PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-march=armv8-a>
@@ -74,10 +83,10 @@ target_include_directories(llmhub_llama_cpu PRIVATE
     "${LLAMA_CPP_DIR}/ggml/include"
     "${LLAMA_CPP_DIR}/tools/mtmd"
 )
-target_link_libraries(llmhub_llama_cpu PRIVATE llama mtmd android log)
+target_link_libraries(llmhub_llama_cpu PRIVATE llama mtmd ggml android log dl)
 
-# Portable arm64 llama.cpp source with the Vulkan GPU backend for Mali and other
-# Android Vulkan devices. This is separate from the Snapdragon release binary.
+# The same llama.cpp libraries plus the libllmhub_ggml-vulkan module, for Mali and other Android
+# Vulkan devices. This is separate from the Snapdragon release binary.
 add_library(llmhub_llama_vulkan SHARED llama_cpp_jni.cpp)
 target_compile_definitions(llmhub_llama_vulkan PRIVATE LLMHUB_VULKAN=1)
 target_compile_options(llmhub_llama_vulkan PRIVATE -march=armv8-a -fvisibility=hidden)
@@ -86,9 +95,9 @@ target_include_directories(llmhub_llama_vulkan PRIVATE
     "${LLAMA_CPP_DIR}/include"
     "${LLAMA_CPP_DIR}/ggml/include"
     "${LLAMA_CPP_DIR}/tools/mtmd")
-target_link_libraries(llmhub_llama_vulkan PRIVATE llama mtmd android log)
+target_link_libraries(llmhub_llama_vulkan PRIVATE llama mtmd ggml android log dl)
 
-# The official b12020 Snapdragon release is packaged alongside the app, not fetched
+# The official b12477 Snapdragon release is packaged alongside the app, not fetched
 # by Gradle. It is loaded only when the user selects Adreno GPU or Hexagon NPU.
 set(LLAMA_PREBUILT_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/../jniLibs/arm64-v8a")
 foreach(prebuilt IN ITEMS ggml llama mtmd)

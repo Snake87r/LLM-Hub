@@ -186,6 +186,7 @@
     <string name="failed_to_load_image">Gagal memuat gambar</string>
     <string name="model_loading_error">Kesalahan memuat model</string>
     <string name="message_send_error">Kesalahan mengirim pesan</string>
+    <string name="context_window_full_error">Jendela konteks sudah penuh. Persingkat pesan Anda atau perbesar ukuran jendela konteks di pengaturan.</string>
     <string name="file_save_error">Kesalahan menyimpan file</string>
     <string name="file_save_success">File berhasil disimpan</string>
     
@@ -1183,4 +1184,9 @@
     <string name="image_extras_ios_help">LoRA: SafeTensors atau .ckpt Draw Things. Encoder/VAE: .ckpt Draw Things yang kompatibel. Embedding: SafeTensors. Pilih model yang sesuai terlebih dahulu.</string>
     <string name="image_extras_android_help">File yang didukung: SafeTensors, GGUF, CKPT, PT, PTH, BIN. LoRA, CLIP skip, dan encoder hanya berfungsi dengan checkpoint yang diimpor, bukan model NPU/CPU bawaan.</string>
     <string name="image_extras_import_location">Impor checkpoint, LoRA, encoder, dan daftar prompt di %1$s → %2$s.</string>
+
+    <!-- LiteRT-LM speech models and system-managed ML Kit models -->
+    <string name="litert_tts_model_unavailable">Model suara ini tidak tersedia. Selesaikan unduhannya atau pilih mesin TTS lain di Setelan.</string>
+    <string name="litert_tts_speech_failed">Tidak dapat menghasilkan suara. Pilih suara atau mesin TTS lain di Setelan.</string>
+    <string name="model_system_managed">Dikelola oleh sistem</string>
 </resources>

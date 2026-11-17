@@ -24,14 +24,10 @@ android {
         applicationId = "com.llmhub.llmhub"
         minSdk = 27
         targetSdk = 37
-        versionCode = 179
-        versionName = "4.6.5"
+        versionCode = 182
+        versionName = "4.6.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val hfToken: String = localProperties.getProperty("HF_TOKEN", "")
-        buildConfigField("String", "HF_TOKEN", "\"$hfToken\"")
-        val hfTokenFallback: String = localProperties.getProperty("HF_TOKEN_FALLBACK", "")
-        buildConfigField("String", "HF_TOKEN_FALLBACK", "\"$hfTokenFallback\"")
         val debugPremium: Boolean = localProperties.getProperty("DEBUG_PREMIUM", "false").toBoolean()
         buildConfigField("Boolean", "DEBUG_PREMIUM", "$debugPremium")
 
@@ -367,14 +363,23 @@ dependencies {
     implementation("com.google.mediapipe:tasks-genai:0.10.35")
     implementation("com.google.mediapipe:tasks-vision:1.1.1")
     implementation("com.google.mediapipe:tasks-text:1.1.1")
+    // AudioTranscriber (Parakeet) and TextToSpeech (Kokoro, PocketTTS) tasks for .litertlm speech models.
+    implementation("com.google.mediapipe:tasks-audio:1.2.0")
+
+    // ML Kit GenAI speech recognition: system-managed on-device ASR (AICore).
+    implementation("com.google.mlkit:genai-common:1.0.0-beta5")
+    implementation("com.google.mlkit:genai-speech-recognition:1.0.0-alpha2")
 
     // LiteRT-LM: native Kotlin API for .litertlm models (Gemma-3n, Gemma-4, etc.)
     // Replaces tasks-genai for litertlm format models. GPU enabled once 0.10.1 hits Maven.
+    // Its NPU dispatch libraries are not on Maven: they are built from the LiteRT revision this release
+    // pins and live in assets/litertlm_npu. Rebuild them with tools/litertlm_npu/build_dispatch.sh and run
+    // EmbeddingNpuLoadDeviceTest whenever this version changes, or NPU embedding models stop loading.
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.19.1")
 
-    // LiteRT NPU dispatch libraries for the SoC-specific EmbeddingGemma 2 .litertlm files.
-    // Qualcomm also needs QAIRT 2.50 (QNN system API 1.14). The libs in assets/qnnlibs are
-    // the older SD runtime (system API 1.5) and are extracted separately, not used here.
+    // LiteRT NPU dispatch libraries for the CompiledModel features (Parakeet NPU, LiteRT Stable Diffusion).
+    // Qualcomm also needs QAIRT 2.50 (QNN system API 1.14). The libs in assets/qnnlibs are the older SD
+    // runtime (system API 1.5) and are extracted separately, not used here.
     implementation("com.google.ai.edge.litert:litert-npu-runtime-qualcomm:2.3.0")
     implementation("com.google.ai.edge.litert:litert-npu-runtime-mediatek:2.3.0")
     implementation("com.google.ai.edge.litert:litert-npu-runtime-google-tensor:2.3.0")

@@ -432,8 +432,21 @@ private sealed interface LatexSegment {
         data class MathPart(val latex: String, val isBlock: Boolean) : LatexSegment
 }
 
-private val latexRegex = Regex(
-        pattern = """(?s)(\$\$(.+?)\$\$|\\\[(.+?)\\\]|\\\((.+?)\\\)|(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$))"""
+/**
+ * Block math ($$..$$, \[..\]), \(..\) and inline $..$.
+ *
+ * Inline $..$ follows the usual Markdown rule so that prices are not taken for math: the opening $ is
+ * followed by a non-space, the closing $ is preceded by a non-space and not followed by a digit, and
+ * nothing in between is a line break or another $. "$0.18-$0.56" and "US$0.10 ... $5" stay plain text;
+ * a reply full of prices used to be redrawn in a WebView on every streamed update, which flashed.
+ * A span that starts with a digit is math only if it holds no space or has one of \ ^ _ = { }: "$5 for
+ * one and 10$" and "$0.56 per minute ($" are text. Such a span is not math either while its closing $
+ * is the last character: a streamed reply that has just reached the $ of "$0.18-$0.56" would switch to
+ * the WebView for one update.
+ */
+internal val latexRegex = Regex(
+        pattern = """(?s)(\$\$(.+?)\$\$|\\\[(.+?)\\\]|\\\((.+?)\\\)|""" +
+                """(?<![\$\\A-Za-z0-9])\$(?![\$\s])(?!\d[^\n\$\\\^_=\{\}]*\s[^\n\$\\\^_=\{\}]*\$)(?!\d[^\n\$\\\^_=\{\}]*\$\z)([^\n\$]+?)(?<![\s\\])\$(?![\$\d]))"""
 )
 
 private fun parseLatexSegments(input: String): List<LatexSegment> {

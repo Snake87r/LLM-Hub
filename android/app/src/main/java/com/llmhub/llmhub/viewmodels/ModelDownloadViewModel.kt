@@ -1,10 +1,11 @@
 package com.llmhub.llmhub.viewmodels
 
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.retryWhen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.llmhub.llmhub.data.HfDefaultToken
 import com.llmhub.llmhub.data.LLMModel
 import com.llmhub.llmhub.data.ModelData
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -70,33 +71,26 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         private const val KEY_CUSTOM_HF_TOKEN = "custom_hf_token"
 
         /**
-         * Returns ONLY the user-provided custom token (never the default secret token).
-         * If the user has not configured their own token, returns empty string.
+         * Returns the Hugging Face token the user entered in Settings, or an empty string.
+         * The app ships no token of its own.
          */
         fun getCustomToken(context: Context): String {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val custom = prefs.getString(KEY_CUSTOM_HF_TOKEN, null)?.trim()
-            if (!custom.isNullOrEmpty() && !HfDefaultToken.isBundled(custom)) {
-                return custom
-            }
-            return ""
+            return custom.orEmpty()
         }
 
         /**
-         * Returns the effective token: custom user token if configured, else the bundled token (HfDefaultToken).
+         * Returns the user's token, or null when they have not set one.
          */
-        fun getEffectiveToken(context: Context): String? {
-            val custom = getCustomToken(context)
-            if (custom.isNotEmpty()) return custom
-            return HfDefaultToken.current
-        }
+        fun getEffectiveToken(context: Context): String? = getCustomToken(context).ifEmpty { null }
 
         /**
          * Saves or clears the user-provided custom token.
          */
         fun setCustomToken(context: Context, token: String?) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val clean = token?.trim()?.takeIf { it.isNotEmpty() && !HfDefaultToken.isBundled(it) }
+            val clean = token?.trim()?.takeIf { it.isNotEmpty() }
             if (clean == null) {
                 prefs.edit().remove(KEY_CUSTOM_HF_TOKEN).remove("hf_token").apply()
             } else {
@@ -106,19 +100,20 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     init {
-        // Load custom HF token if user provided one, otherwise use the bundled token (HfDefaultToken).
-        // Default token is NEVER stored into custom token preferences or exposed to the user.
+        // The user's own Hugging Face token, if they set one in Settings.
         val effectiveToken = getEffectiveToken(context)
-        val hasCustom = getCustomToken(context).isNotEmpty()
-        android.util.Log.d("ModelDownloadViewModel", "[init] Loaded effective HF token: ${effectiveToken?.take(8)}... (hasCustom=$hasCustom)")
         _hfToken.value = effectiveToken
         
         // Initialize ModelDownloader with token
         modelDownloader = ModelDownloader(ktorClient, context, effectiveToken)
         
-        loadModels()
-        loadImportedModels()
         viewModelScope.launch {
+            // Scanning model folders and opening .task files as ZIPs blocked the main thread
+            // while the screen composed (ANR in ModelDownloadScreen, 4.6.4 and 4.6.5).
+            withContext(Dispatchers.IO) {
+                loadModels()
+                loadImportedModels()
+            }
             var previous = emptyMap<String, LLMModel>()
             com.llmhub.llmhub.service.ModelDownloadService.downloadStates.collect { snapshots ->
                 snapshots.forEach { (name, snapshot) ->
@@ -224,7 +219,8 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         if (!modelsDir.exists()) modelsDir.mkdirs()
 
         // Prepare list with real downloaded/partial state
-        val baseModels: MutableList<LLMModel> = ModelData.models.map { model ->
+        // ML Kit recognizers have no file to scan; refreshMlKitAsrStatus adds them below where supported.
+        val baseModels: MutableList<LLMModel> = ModelData.models.filterNot { com.llmhub.llmhub.data.AsrModels.isMlKit(it) }.map { model ->
             // Handle Stable Diffusion NPU models (QNN format)
             if (model.modelFormat == "qnn_npu") {
                 val sdModelsDir = File(context.filesDir, "sd_models")
@@ -306,27 +302,11 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
                     val fileCount = files.filter { it.length() > 0 }.size
                     val totalDownloaded = files.sumOf { it.length() }
 
-                    // Try to get expected file count from manifest
-                    val expectedFileCount = try {
-                        val url = java.net.URL(model.url)
-                        val conn = url.openConnection() as java.net.HttpURLConnection
-                        conn.connectTimeout = 3000
-                        conn.readTimeout = 3000
-                        val json = conn.inputStream.bufferedReader().use { it.readText() }
-                        conn.disconnect()
-                        val manifestObj = org.json.JSONObject(json)
-                        manifestObj.getJSONArray("files").length()
-                    } catch (e: Exception) {
-                        -1 // Unknown, fall back to size check
-                    }
-
                     if (fileCount > 0) {
-                        android.util.Log.d("ModelDownloadViewModel", "[loadModels:image_gen] dir=${imageGenDir.absolutePath} fileCount=$fileCount totalDownloaded=$totalDownloaded model.sizeBytes=${model.sizeBytes} expectedFileCount=$expectedFileCount")
-                        val completeEnough = if (expectedFileCount > 0) {
-                            fileCount >= expectedFileCount && (model.sizeBytes <= 0 || totalDownloaded >= (model.sizeBytes * 0.95).toLong())
-                        } else {
-                            model.sizeBytes > 0 && totalDownloaded >= (model.sizeBytes * 0.95).toLong()
-                        }
+                        android.util.Log.d("ModelDownloadViewModel", "[loadModels:image_gen] dir=${imageGenDir.absolutePath} fileCount=$fileCount totalDownloaded=$totalDownloaded model.sizeBytes=${model.sizeBytes}")
+                        // The manifest fetch that used to sit here always failed on the main thread, so
+                        // the size check was the only one in use; it stays that way off the main thread.
+                        val completeEnough = model.sizeBytes > 0 && totalDownloaded >= (model.sizeBytes * 0.95).toLong()
 
                         if (completeEnough) {
                             model.copy(
@@ -527,6 +507,7 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         }.toMutableList()
 
         _models.value = baseModels
+        ModelData.models.filter { com.llmhub.llmhub.data.AsrModels.isMlKit(it) }.forEach(::refreshMlKitAsrStatus)
 
         // Re-validate partials that may actually be complete (e.g., size unknown in HEAD)
         baseModels.filter { !it.isDownloaded && it.downloadedBytes > 0 && (it.totalBytes == null || it.totalBytes == 0L) }
@@ -643,7 +624,79 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
         return search(baseDir, 0)
     }
 
+    /**
+     * ML Kit recognizers are owned by the system: list them only where the device can run them, as
+     * downloaded once the system reports the model present.
+     */
+    private fun refreshMlKitAsrStatus(model: LLMModel) {
+        viewModelScope.launch {
+            val status = com.llmhub.llmhub.inference.MlKitAsrEngine.status(model)
+            if (status == com.google.mlkit.genai.common.FeatureStatus.UNAVAILABLE) return@launch
+            val ready = status == com.google.mlkit.genai.common.FeatureStatus.AVAILABLE
+            if (_models.value.none { it.name == model.name }) {
+                _models.value = _models.value + model.copy(
+                    isDownloaded = ready, isDownloading = false, downloadProgress = if (ready) 1f else 0f,
+                    downloadedBytes = 0L, totalBytes = null
+                )
+            }
+        }
+    }
+
+    private fun downloadMlKitAsr(model: LLMModel) {
+        updateModel(model.name) { it.copy(isDownloading = true, isPaused = false, downloadProgress = -1f, downloadedBytes = 0L, totalBytes = null) }
+        downloadJobs[model.name] = viewModelScope.launch {
+            val engine = com.llmhub.llmhub.inference.MlKitAsrEngine(com.llmhub.llmhub.data.AsrModels.isMlKitAdvanced(model))
+            var downloaded = false
+            try {
+                val download = engine.download() ?: error("ML Kit speech recognition is not available on this device")
+                var total = 0L
+                var failure: Exception? = null
+                download.takeWhile { status ->
+                    when (status) {
+                        is com.google.mlkit.genai.common.DownloadStatus.DownloadStarted -> { total = status.bytesToDownload; true }
+                        is com.google.mlkit.genai.common.DownloadStatus.DownloadProgress -> {
+                            updateModel(model.name, rateLimit = true) {
+                                it.copy(
+                                    isDownloading = true,
+                                    downloadProgress = if (total > 0) (status.totalBytesDownloaded.toFloat() / total).coerceIn(0f, 0.999f) else -1f,
+                                    downloadedBytes = status.totalBytesDownloaded,
+                                    totalBytes = total.takeIf { bytes -> bytes > 0 }
+                                )
+                            }
+                            true
+                        }
+                        is com.google.mlkit.genai.common.DownloadStatus.DownloadFailed -> { failure = status.e; false }
+                        else -> false // DownloadCompleted
+                    }
+                }.collect()
+                // The system reports a failure while its own download is still queued ("will be
+                // retried automatically") and finishes it later, so keep watching for a while.
+                var checks = 0
+                while (failure != null && checks++ < 36 &&
+                    engine.status() != com.google.mlkit.genai.common.FeatureStatus.AVAILABLE) kotlinx.coroutines.delay(5_000)
+                downloaded = engine.status() == com.google.mlkit.genai.common.FeatureStatus.AVAILABLE
+                if (!downloaded) failure?.let { throw it }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("ModelDownloadViewModel", "ML Kit ASR download failed for ${model.name}", e)
+                _downloadErrors.emit(model.name to (e.message ?: e.toString()))
+            } finally {
+                engine.close()
+                downloadJobs.remove(model.name)
+                updateModel(model.name) {
+                    it.copy(isDownloaded = downloaded, isDownloading = false, downloadProgress = if (downloaded) 1f else 0f,
+                        downloadedBytes = 0L, totalBytes = null, downloadSpeedBytesPerSec = null)
+                }
+            }
+        }
+    }
+
     fun downloadModel(model: LLMModel) {
+        if (com.llmhub.llmhub.data.AsrModels.isMlKit(model)) {
+            downloadMlKitAsr(model)
+            return
+        }
         val modelsDir = File(context.filesDir, "models")
         val existingFile = File(modelsDir, model.localFileName())
         val startingBytes = if (model.isVideoGenerationModel()) {
@@ -1128,6 +1181,8 @@ class ModelDownloadViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun deleteModel(model: LLMModel) {
+        // The system owns ML Kit models and shares them between apps; there is nothing of ours to delete.
+        if (com.llmhub.llmhub.data.AsrModels.isMlKit(model)) return
         // First cancel any ongoing download
         cancelDownload(model)
         

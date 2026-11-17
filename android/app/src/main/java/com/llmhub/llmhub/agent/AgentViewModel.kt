@@ -14,6 +14,7 @@ import com.llmhub.llmhub.data.featureThinking
 import com.llmhub.llmhub.data.DeviceInfo
 import com.llmhub.llmhub.data.ModelAvailabilityProvider
 import com.llmhub.llmhub.inference.InferenceService
+import com.llmhub.llmhub.inference.LiteRtLmInferenceService
 import com.llmhub.llmhub.inference.UnifiedInferenceService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,9 @@ enum class VoiceMode {
     WHISPER_KIT,
     GEMMA_AUDIO
 }
+
+/** Agent context window when the user never set one; services cap it at the model's own limit. */
+internal const val AGENT_DEFAULT_CONTEXT_WINDOW = 4096
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -223,7 +227,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun loadModelSuspend(model: LLMModel, preferredBackend: LlmInference.Backend? = null, deviceId: String? = null): Boolean {
         _loadingModelName.value = model.name
         try {
-            val maxTokens = agentPrefs.getInt("selected_max_tokens", 4096)
+            val maxTokens = agentPrefs.getInt("selected_max_tokens", AGENT_DEFAULT_CONTEXT_WINDOW)
             val enableThinking = agentPrefs.featureThinking(model, "agent_enable_thinking", true)
             inferenceService.setGenerationParameters(
                 maxTokens = maxTokens,
@@ -354,6 +358,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 processPromptWithTools(userText)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // An inference error (LiteRtLmJniException from the web search stream, 4.6.4 and 4.6.5)
+                // escaped this launch and crashed the app.
+                Log.e("AgentViewModel", "Generation failed: ${e.message}", e)
+                addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = generationErrorText(e)))
             } finally {
                 _isGenerating.value = false
             }
@@ -392,37 +403,42 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     // Native Gemma Audio ingestion
                     processPromptWithTools(prompt = "User spoken request", audioBytes = audioBytes)
                 } else {
-                    // Whisper ASR fallback
-                    val whisperService = com.llmhub.llmhub.inference.WhisperKitService(context)
-                    if (!whisperService.isLoaded) {
-                        val asrModels = ModelAvailabilityProvider.loadAvailableModels(context, includeAsr = true)
-                            .filter { it.modelFormat.lowercase() == "whisperkit" || it.name.lowercase().contains("whisper") }
-                        val asrModel = asrModels.firstOrNull()
-                        if (asrModel != null) {
-                            val modelDirName = asrModel.name.replace(" ", "_").replace(Regex("[^a-zA-Z0-9_.-]"), "")
-                            val modelDir = java.io.File(context.filesDir, "models/$modelDirName")
-                            if (modelDir.exists()) {
-                                whisperService.loadModel(modelDir.absolutePath)
+                    // Speech recognition fallback: the first downloaded ASR model that loads.
+                    val asrService = com.llmhub.llmhub.inference.SpeechRecognitionService(context)
+                    try {
+                        ModelAvailabilityProvider.loadAvailableModels(context, includeAsr = true)
+                            .filter { it.category == "asr" }
+                            // Loaded for this one request, so cheapest to start first: Whisper, ML Kit, Parakeet.
+                            .sortedBy {
+                                when {
+                                    it.modelFormat == "whisperkit" -> 0
+                                    com.llmhub.llmhub.data.AsrModels.isMlKit(it) -> 1
+                                    else -> 2
+                                }
                             }
-                        }
-                    }
+                            .firstOrNull { asrService.loadModel(it) }
 
-                    if (whisperService.isLoaded) {
-                        val pcm16Wav = AudioConversionUtils.float32WavToPcm16Wav(audioBytes)
-                        val pcm16Raw = if (pcm16Wav.size > 44) pcm16Wav.copyOfRange(44, pcm16Wav.size) else pcm16Wav
-                        val transcribed = whisperService.transcribe(pcm16Raw)
-                        if (!transcribed.isNullOrBlank()) {
-                            processPromptWithTools(transcribed)
+                        if (asrService.isLoaded) {
+                            val pcm16Wav = AudioConversionUtils.float32WavToPcm16Wav(audioBytes)
+                            val pcm16Raw = if (pcm16Wav.size > 44) pcm16Wav.copyOfRange(44, pcm16Wav.size) else pcm16Wav
+                            val transcribed = asrService.transcribe(pcm16Raw)
+                            if (!transcribed.isNullOrBlank()) {
+                                processPromptWithTools(transcribed)
+                            } else {
+                                addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = "Could not transcribe recorded audio."))
+                            }
                         } else {
-                            addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = "Could not transcribe recorded audio."))
+                            addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = "Native audio input requires Gemma 4 Audio model or a downloaded speech recognition model."))
                         }
-                    } else {
-                        addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = "Native audio input requires Gemma 4 Audio model or a downloaded Whisper ASR model."))
+                    } finally {
+                        asrService.release()
                     }
                 }
             } catch (e: Exception) {
                 Log.e("AgentViewModel", "Failed to process audio input: ${e.message}", e)
-                addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = "Audio processing error: ${e.message}"))
+                val text = if (LiteRtLmInferenceService.isContextWindowOverflow(e)) generationErrorText(e)
+                    else "Audio processing error: ${e.message}"
+                addMessage(AgentMessage.Text(sender = AgentMessage.Sender.AGENT, text = text))
             } finally {
                 _isGenerating.value = false
             }
@@ -448,7 +464,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val agentPrefs = getApplication<Application>().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
         val enableThinking = agentPrefs.featureThinking(inferenceService.getCurrentlyLoadedModel(), "agent_enable_thinking", true)
-        val maxTokens = agentPrefs.getInt("selected_max_tokens", 4096)
+        val maxTokens = agentPrefs.getInt("selected_max_tokens", AGENT_DEFAULT_CONTEXT_WINDOW)
         setGenerationParameters(maxTokens = maxTokens, enableThinking = enableThinking, contextWindow = maxTokens)
 
         if (_isWebSearchEnabled.value) {
@@ -562,6 +578,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 Log.e("AgentViewModel", "Stream error: ${e.message}")
+                // Without this the empty reply was removed below and the request failed silently.
+                if (LiteRtLmInferenceService.isContextWindowOverflow(e)) updateAgentTextMessage(aiMsgId, generationErrorText(e))
             }
 
             if (_messages.value.any { it.id == aiMsgId && (it as? AgentMessage.Text)?.text?.isBlank() == true }) {
@@ -574,6 +592,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private data class ParsedTool(val name: String, val args: String)
+
+    private fun generationErrorText(e: Throwable): String = getApplication<Application>().getString(
+        if (LiteRtLmInferenceService.isContextWindowOverflow(e)) R.string.context_window_full_error else R.string.message_send_error
+    )
 
     private fun parseAlarmTime(text: String): Pair<Int, Int> {
         val lower = text.lowercase()

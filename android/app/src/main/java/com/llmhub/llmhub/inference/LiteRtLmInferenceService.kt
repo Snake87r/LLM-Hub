@@ -30,6 +30,7 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -107,6 +108,18 @@ class LiteRtLmInferenceService(private val applicationContext: Context) : Infere
 
         @JvmStatic
         fun getMaxTokensForModelStatic(model: LLMModel): Int = model.contextWindowSize
+
+        /**
+         * LiteRT-LM rejects a prompt longer than the engine's maxNumTokens with a LiteRtLmJniException
+         * ("Input token ids are too long. Exceeding the maximum number of tokens allowed").
+         */
+        @JvmStatic
+        fun isContextWindowOverflow(error: Throwable): Boolean =
+            generateSequence(error) { it.cause }.any { e ->
+                val message = e.message ?: return@any false
+                message.contains("Input token ids are too long", ignoreCase = true) ||
+                    message.contains("maximum number of tokens", ignoreCase = true)
+            }
     }
 
     /**
@@ -237,13 +250,19 @@ class LiteRtLmInferenceService(private val applicationContext: Context) : Infere
         }
     }
 
-    // Engine.close() frees the native engine and can take seconds; off the main thread, or leaving
-    // a screen that unloads froze the app (ANR in LiteRtLmJni.nativeDeleteEngine, 4.5.5).
-    override suspend fun unloadModel(): Unit = withContext(Dispatchers.IO) {
-        engineMutex.withLock {
-            closeEngineLocked()
-            currentModel = null
-            Log.d(TAG, "Engine unloaded")
+    override suspend fun unloadModel() {
+        // Counts as unloaded at once, so the next screen (e.g. AI Chat after Writing Aid) never sees it as loaded.
+        currentModel = null
+        // On the caller's thread, not deferred: with nothing generating the engine closes right away. A reply
+        // still generating is cancelled and awaited first (closeEngineLocked), since freeing the engine under
+        // LiteRT-LM's worker thread crashed in nativeDeleteEngine (4.5.7). NonCancellable: leaving the feature
+        // cancels the screen's scope, which must not stop the close halfway and leave the engine in memory.
+        withContext(NonCancellable) {
+            engineMutex.withLock {
+                closeEngineLocked()
+                currentModel = null
+                Log.d(TAG, "Engine unloaded")
+            }
         }
     }
 

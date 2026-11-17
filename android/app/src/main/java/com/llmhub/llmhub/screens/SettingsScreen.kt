@@ -52,6 +52,7 @@ import com.llmhub.llmhub.utils.FileUtils
 import com.llmhub.llmhub.R
 import java.io.File
 import com.llmhub.llmhub.BuildConfig
+import com.llmhub.llmhub.data.LiteRtTtsModel
 import com.llmhub.llmhub.data.PocketTtsModel
 import com.llmhub.llmhub.data.SupertonicModel
 import com.llmhub.llmhub.data.hasCompleteDownloadedBundle
@@ -670,12 +671,35 @@ fun SettingsScreen(
                                         val processorRunning = remember { com.llmhub.llmhub.data.MemoryProcessor.processing }
                                         val processorRunningState by processorRunning.collectAsState(initial = false)
                                         val hasPendingDocs = memoryList.any { it.status == "PENDING" || it.status == "EMBEDDING_IN_PROGRESS" }
+                                        // A document left unprocessed by an earlier session (app closed, model failed) has nobody
+                                        // working on it: start the processor, so the spinner below always means real work.
+                                        val hasUnprocessedDocs = hasPendingDocs || memoryList.any { it.status == "FAILED" }
+                                        LaunchedEffect(hasUnprocessedDocs) {
+                                            if (hasUnprocessedDocs && !com.llmhub.llmhub.data.MemoryProcessor.processing.value) {
+                                                com.llmhub.llmhub.data.MemoryProcessor(
+                                                    context, com.llmhub.llmhub.data.LlmHubDatabase.getDatabase(context)
+                                                ).processPending()
+                                            }
+                                        }
                                         if (processorRunningState || hasPendingDocs) {
                                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
                                                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(stringResource(R.string.memory_processing), style = MaterialTheme.typography.bodySmall)
                                             }
+                                        }
+                                        // A document the embedding model could not process: say why instead of spinning.
+                                        val memoryFailure by com.llmhub.llmhub.data.MemoryProcessor.failure.collectAsState()
+                                        if (!processorRunningState && memoryFailure != null && memoryList.any { it.status == "FAILED" }) {
+                                            Text(
+                                                stringResource(
+                                                    if (memoryFailure == com.llmhub.llmhub.data.MemoryProcessor.Failure.NPU_UNAVAILABLE) R.string.media_search_npu_unavailable
+                                                    else R.string.memory_upload_failed
+                                                ),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
                                         }
 
                                         Spacer(modifier = Modifier.height(8.dp))
@@ -1561,7 +1585,9 @@ private fun TtsModelSelector(themeViewModel: ThemeViewModel) {
                 val modelsDir = File(context.filesDir, "models")
                 val modelDirName = model.name.replace(" ", "_").replace(Regex("[^a-zA-Z0-9_.-]"), "")
                 val modelFile = File(File(modelsDir, modelDirName), model.localFileName())
-                modelFile.exists() && modelFile.length() > 0
+                // The LiteRT-LM bundles are single files stored beside the other .litertlm models.
+                if (LiteRtTtsModel.isModel(model.name)) LiteRtTtsModel.isComplete(context, model.name)
+                else modelFile.exists() && modelFile.length() > 0
             }
             .map { it.name }
     }
@@ -1647,6 +1673,7 @@ private fun TtsModelSelector(themeViewModel: ThemeViewModel) {
 private fun TtsDeviceSelector(themeViewModel: ThemeViewModel) {
     val selectedTtsModel by themeViewModel.selectedTtsModel.collectAsState()
     if (selectedTtsModel == null || SupertonicModel.isModel(selectedTtsModel) || selectedTtsModel == PocketTtsModel.NAME) return
+    if (LiteRtTtsModel.isModel(selectedTtsModel) && !LiteRtTtsModel.supportsGpu(selectedTtsModel)) return
 
     val selectedTtsDevice by themeViewModel.selectedTtsDevice.collectAsState()
     var showTtsDeviceDialog by remember { mutableStateOf(false) }
@@ -1736,6 +1763,10 @@ private fun TtsVoiceSelector(themeViewModel: ThemeViewModel) {
     }
     if (SupertonicModel.isModel(selectedTtsModel)) {
         SupertonicVoiceSettings()
+        return
+    }
+    selectedTtsModel?.takeIf { LiteRtTtsModel.isModel(it) }?.let {
+        LiteRtVoiceSettings(it, themeViewModel)
         return
     }
 
